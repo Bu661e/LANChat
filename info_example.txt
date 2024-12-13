@@ -142,3 +142,41 @@
         "video_ext": ".mp4",  # 视频扩展名(.mp4, .avi, .mkv, .mov等)
         "timestamp": "2024-12-12 12:12:12"
     }
+9. 在广场上发送文件
+    9.1 one_user --> server
+    {
+        "type": "square_file",
+        "file_data": "base64编码的文件数据",
+        "file_ext": ".txt",  # 文件扩展名
+        "timestamp": "2024-12-12 12:12:12"
+    }
+    9.2 server --> other users
+    {
+        "type": "square_file",
+        "username": "name123",
+        "ip": "127.0.0.1",
+        "port": "8001",
+        "file_data": "base64编码的文件数据",
+        "file_ext": ".txt",  # 文件扩展名
+        "timestamp": "2024-12-12 12:12:12"
+    }
+10. 私聊发送文件
+    10.1 one_user --> server
+    {
+        "type": "private_file",
+        "target_ip": "127.0.0.1",
+        "target_port": "8001",
+        "file_data": "base64编码的文件数据",
+        "file_ext": ".txt",  # 文件扩展名
+        "timestamp": "2024-12-12 12:12:12"
+    }
+    10.2 server --> target_user
+    {
+        "type": "private_file",
+        "username": "name123",
+        "ip": "192.168.31.227",
+        "port": "8001",
+        "file_data": "base64编码的文件数据",
+        "file_ext": ".txt",  # 文件扩展名
+        "timestamp": "2024-12-12 12:12:12"
+    }

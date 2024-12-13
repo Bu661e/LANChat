@@ -1,0 +1,99 @@
+root@autodl-container-14ba49b3e1-4886f162:~/autodl-tmp/modig# python main.py -t output -ppi CPDB
+args_dict {'title': 'output', 'ppi': 'CPDB', 'omic': 'multiomic', 'cancer': 'pancan', 'epochs': 1000, 'patience': 20, 'dp': 0.25, 'lr': 0.001, 'wd': 0.0005, 'hs1': 300, 'hs2': 100, 'thr_go': 0.8, 'thr_seq': 0.5, 'thr_exp': 0.8, 'thr_path': 0.5, 'seed': 42}
+Network INFO
+Get gene list
+/root/autodl-tmp/modig/modig_graph.py:90: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  omics_adj.fillna(0, inplace=True)
+The shape of omics_feature_vector:torch.Size([19255, 48])
+generate graph
+Get gene list
+/root/autodl-tmp/modig/modig_graph.py:122: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+  path_matrix = path.applymap(lambda x: 0 if x < thr_path else 1)
+/root/autodl-tmp/modig/modig_graph.py:127: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+  go_matrix = go.applymap(lambda x: 0 if x < thr_go else 1)
+/root/autodl-tmp/modig/modig_graph.py:132: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+  exp_matrix = exp.applymap(lambda x: 0 if x < thr_exp else 1)
+/root/autodl-tmp/modig/modig_graph.py:137: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+  seq_matrix = seq.applymap(lambda x: 0 if x < thr_seq else 1)
+/root/autodl-tmp/modig/modig_graph.py:144: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  network.fillna(0, inplace=True)
+The shape of network_adj: (19255, 19255)
+/root/autodl-tmp/modig/modig_graph.py:144: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  network.fillna(0, inplace=True)
+The shape of network_adj: (19255, 19255)
+/root/autodl-tmp/modig/modig_graph.py:144: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  network.fillna(0, inplace=True)
+The shape of network_adj: (19255, 19255)
+/root/autodl-tmp/modig/modig_graph.py:144: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  network.fillna(0, inplace=True)
+The shape of network_adj: (19255, 19255)
+==========================================================
+Network INFO
+The shape of omics_feature_vector:torch.Size([19255, 48])
+If the graph is connected graph: False
+The number of connected components: 19
+The edge index is tensor([[    0,     0,     0,  ..., 14089, 14090, 14091],
+        [    1,  1367,  4310,  ...,   342,  6764,   295]])
+The PPI graph: Data(edge_index=[2, 689612], label=[14092], num_nodes=14092, x=[19255, 48])
+The shape of omics_feature_vector:torch.Size([19255, 48])
+If the graph is connected graph: False
+The number of connected components: 5977
+The edge index is tensor([[    0,     0,     0,  ..., 19254, 19254, 19254],
+        [  224,   225,   424,  ..., 12108, 17466, 18418]])
+The GO graph: Data(edge_index=[2, 1313696], label=[19255], weight=[1313696], num_nodes=19255, x=[19255, 48])
+The shape of omics_feature_vector:torch.Size([19255, 48])
+If the graph is connected graph: False
+The number of connected components: 9417
+The edge index is tensor([[    1,     2,     6,  ..., 19254, 19254, 19254],
+        [16762, 16378,    32,  ..., 18738, 18879, 19195]])
+The EXP graph: Data(edge_index=[2, 1716130], label=[19255], weight=[1716130], num_nodes=19255, x=[19255, 48])
+The shape of omics_feature_vector:torch.Size([19255, 48])
+If the graph is connected graph: False
+The number of connected components: 15728
+The edge index is tensor([[    2,     9,    10,  ..., 19249, 19250, 19251],
+        [13264,    10,     9,  ..., 19248, 19251, 19250]])
+The SEQ graph: Data(edge_index=[2, 18210], label=[19255], weight=[18210], num_nodes=19255, x=[19255, 48])
+The shape of omics_feature_vector:torch.Size([19255, 48])
+If the graph is connected graph: False
+The number of connected components: 11486
+The edge index is tensor([[    2,     2,     2,  ..., 19252, 19252, 19252],
+        [ 1952,  1969,  1970,  ..., 11729, 11730, 13478]])
+The PATH graph: Data(edge_index=[2, 670456], label=[19255], weight=[670456], num_nodes=19255, x=[19255, 48])
+Get gene list
+The match number of gene with annotation: 2929
+The label distribution: {0.0: 2141, 1.0: 788}
+==========================================================
+0
+Traceback (most recent call last):
+  File "/root/autodl-tmp/modig/main.py", line 286, in <module>
+    main(args_dic)
+  File "/root/autodl-tmp/modig/main.py", line 223, in main
+    _, _ = train(train_mask, train_label)
+  File "/root/autodl-tmp/modig/main.py", line 171, in train
+    output = model(graphlist_adj)
+  File "/root/miniconda3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/root/autodl-tmp/modig/modig.py", line 171, in forward
+    outs = self.self_attn(emb)
+  File "/root/miniconda3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/root/autodl-tmp/modig/modig.py", line 125, in forward
+    attn, output = self.mha(q, k, v, mask=mask)
+  File "/root/miniconda3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/root/autodl-tmp/modig/modig.py", line 92, in forward
+    attn, output = self.attention(q, k, v, mask=mask)
+  File "/root/miniconda3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/root/autodl-tmp/modig/modig.py", line 43, in forward
+    u = u / self.scale
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.38 GiB. GPU 0 has a total capacty of 23.64 GiB of which 615.69 MiB is free. Process 941255 has 23.04 GiB memory in use. Of the allocated memory 21.31 GiB is allocated by PyTorch, and 1.28 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF
+root@autodl-container-14ba49b3e1-4886f162:~/autodl-tmp/modig#

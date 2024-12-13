@@ -120,6 +120,27 @@ class ChatPanel(QWidget):
         """)
         button_layout.addWidget(self.image_button)
         
+        # 添加发送文件按钮
+        self.file_button = QPushButton("发送文件")
+        self.file_button.setFixedSize(80, 32)
+        self.file_button.setStyleSheet("""
+            QPushButton {
+                background-color: #e67e22;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #d35400;
+            }
+            QPushButton:pressed {
+                background-color: #c0392b;
+            }
+        """)
+        button_layout.addWidget(self.file_button)
+        
         # 发送按钮
         self.send_button = QPushButton("发送")
         self.send_button.setFixedSize(80, 32)
@@ -211,7 +232,7 @@ class VideoPlayer(QWidget):
         
         # 控制面板布局
         controls_layout = QHBoxLayout(control_panel)
-        controls_layout.setContentsMargins(10, 0, 10, 0)  # 左右留出一些边距
+        controls_layout.setContentsMargins(10, 0, 10, 0)  # 左右留出���些边距
         controls_layout.setSpacing(10)
         
         # 播放按钮
@@ -292,7 +313,7 @@ class VideoPlayer(QWidget):
         position = self.media_player.position()
         
         def format_time(ms):
-            """将毫秒转换为 MM:SS 格式"""
+            """将毫秒转换为 MM:SS 式"""
             s = ms // 1000
             m = s // 60
             s = s % 60
@@ -348,6 +369,10 @@ class MediaTextEdit(QTextEdit):
                     save_action.triggered.connect(lambda: self.save_media(media_name))
                     menu.addAction(play_action)
                     menu.addAction(save_action)
+                elif media_info['type'] == 'file':
+                    save_action = QAction("保存文件", self)
+                    save_action.triggered.connect(lambda: self.save_media(media_name))
+                    menu.addAction(save_action)
                 
                 menu.exec_(QCursor.pos())
 
@@ -366,20 +391,33 @@ class MediaTextEdit(QTextEdit):
         self.video_players.append(player)
 
     def save_media(self, media_name):
+        """保存媒体文件"""
         if media_name not in self.media_data:
             return
             
         media_info = self.media_data[media_name]
         media_data = media_info['data']
         media_ext = media_info['ext']
+        media_type = media_info['type']
+        
+        # 根据媒体类型设置不同的文件过滤器
+        if media_type == 'image':
+            file_filter = f"图片文件 (*{media_ext});;所有文件 (*.*)"
+            default_name = f"image{media_ext}"
+        elif media_type == 'video':
+            file_filter = f"视频文件 (*{media_ext});;所有文件 (*.*)"
+            default_name = f"video{media_ext}"
+        else:  # 文件类型
+            file_filter = f"文件 (*{media_ext});;所有文件 (*.*)"
+            default_name = f"file{media_ext}"
         
         # 打开文件保存对话框
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getSaveFileName(
             self,
-            f"保存{media_info['type']}",
-            f"media{media_ext}",  # 默认文件名
-            f"{media_info['type']}文件 (*{media_ext});;所有文件 (*.*)"
+            f"保存{media_type}",
+            default_name,
+            file_filter
         )
         
         if file_path:
@@ -388,9 +426,9 @@ class MediaTextEdit(QTextEdit):
                 media_bytes = base64.b64decode(media_data)
                 with open(file_path, 'wb') as f:
                     f.write(media_bytes)
-                QMessageBox.information(self, "成功", f"{media_info['type']}保存成功！")
+                QMessageBox.information(self, "成功", f"{media_type}保存成功！")
             except Exception as e:
-                QMessageBox.warning(self, "错误", f"保存{media_info['type']}失败：{str(e)}")
+                QMessageBox.warning(self, "错误", f"保存{media_type}失败：{str(e)}")
 
 class ChatWindow(QWidget):
     def __init__(self, client=None):
@@ -407,6 +445,7 @@ class ChatWindow(QWidget):
         self.group_chat.send_button.clicked.connect(self.send_message)
         self.group_chat.image_button.clicked.connect(self.send_image)
         self.group_chat.video_button.clicked.connect(self.send_video)  # 连接视频发送按钮
+        self.group_chat.file_button.clicked.connect(self.send_file)  # 连接文件发送按钮
         self.chat_stack.addWidget(self.group_chat)
         self.chat_panels["group"] = self.group_chat
         self.current_chat = "group"
@@ -422,6 +461,7 @@ class ChatWindow(QWidget):
             self.client.new_private_message.connect(self.handle_private_message)
             self.client.new_image_message.connect(self.handle_image_message)
             self.client.new_video_message.connect(self.handle_video_message)  # 添加视频消息处理
+            self.client.new_file_message.connect(self.handle_file_message)  # 添加文件消息处理
         
         # 连接用户列表点击事件
         self.user_list.itemClicked.connect(self.on_user_clicked)
@@ -582,6 +622,7 @@ class ChatWindow(QWidget):
             private_chat.send_button.clicked.connect(self.send_message)
             private_chat.image_button.clicked.connect(self.send_image)
             private_chat.video_button.clicked.connect(self.send_video)  # 连接视频发送按钮
+            private_chat.file_button.clicked.connect(self.send_file)  # 连接文件发送按钮
             self.chat_stack.addWidget(private_chat)
             self.chat_panels[address] = private_chat
             
@@ -775,7 +816,7 @@ class ChatWindow(QWidget):
             ip, port = address
             self.add_user(username, f"{ip}:{port}")
         
-        # 更新用户数量（加2是因为包含自己��广场选项）
+        # 更新用户数量（加2是因为包含自己广场选项）
         self.user_list_label.setText(f"在线用户 ({len(users) + 1})")
                     
     def handle_user_logout(self, username, ip, port):
@@ -946,7 +987,7 @@ class ChatWindow(QWidget):
                 # 检查文件大小
                 file_size = os.path.getsize(file_path)
                 if file_size > 50 * 1024 * 1024:  # 50MB限制
-                    QMessageBox.warning(self, "文件过大", "视频文��不能超过50MB")
+                    QMessageBox.warning(self, "文件过大", "视频文件不能超过50MB")
                     return
                 
                 # 读取视频文件
@@ -1052,5 +1093,121 @@ class ChatWindow(QWidget):
                 'type': 'video',
                 'data': video_data,
                 'ext': video_ext
+            }
+                    
+    def send_file(self):
+        """处理发送文件"""
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(
+            self, "选择文件", "", 
+            "所有文件 (*.*)"
+        )
+        
+        if file_path:
+            try:
+                # 读取文��数据
+                with open(file_path, 'rb') as f:
+                    file_data = f.read()
+                
+                # 将文件数据转换为Base64编码
+                file_base64 = base64.b64encode(file_data).decode('utf-8')
+                
+                # 获取文件扩展名
+                _, ext = os.path.splitext(file_path)
+                
+                time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                media_name = f"file_{time.replace(':', '-')}"
+                
+                if self.current_chat == "group":  # 广场消息
+                    self.client.send_message({
+                        "type": "square_file",
+                        "file_data": file_base64,
+                        "file_ext": ext,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示文件占位图
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/> [文件]</p>"
+                    )
+                    # 保存文件数据
+                    current_panel.chat_display.media_data[media_name] = {
+                        'type': 'file',
+                        'data': file_base64,
+                        'ext': ext
+                    }
+                    
+                else:  # 私聊消息
+                    target_ip, target_port = self.current_chat.split(":")
+                    self.client.send_message({
+                        "type": "private_file",
+                        "target_ip": target_ip,
+                        "target_port": target_port,
+                        "file_data": file_base64,
+                        "file_ext": ext,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示文件占位图
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/> [文件]</p>"
+                    )
+                    # 保存文件数据
+                    current_panel.chat_display.media_data[media_name] = {
+                        'type': 'file',
+                        'data': file_base64,
+                        'ext': ext
+                    }
+                    
+            except Exception as e:
+                QMessageBox.warning(self, "发送失败", f"文件发送失败：{str(e)}")
+
+    def handle_file_message(self, username, ip, port, file_data, file_ext, timestamp, is_private=False):
+        """处理接收到的文件消息"""
+        media_name = f"file_{timestamp.replace(':', '-')}"
+        
+        if is_private:
+            address = f"{ip}:{port}"
+            if address not in self.chat_panels:
+                private_chat = ChatPanel(f"与 {username} ({address}) 私聊")
+                private_chat.send_button.clicked.connect(self.send_message)
+                private_chat.image_button.clicked.connect(self.send_image)
+                private_chat.video_button.clicked.connect(self.send_video)
+                private_chat.file_button.clicked.connect(self.send_file)
+                self.chat_stack.addWidget(private_chat)
+                self.chat_panels[address] = private_chat
+            
+            header = f"[{timestamp}] {username}"
+            self.chat_panels[address].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels[address].chat_display.append(
+                f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/> [文件]</p>"
+            )
+            # 保存文件数据
+            self.chat_panels[address].chat_display.media_data[media_name] = {
+                'type': 'file',
+                'data': file_data,
+                'ext': file_ext
+            }
+        else:
+            header = f"[{timestamp}] {username} ({ip})"
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/> [文件]</p>"
+            )
+            # 保存文件数据
+            self.chat_panels["group"].chat_display.media_data[media_name] = {
+                'type': 'file',
+                'data': file_data,
+                'ext': file_ext
             }
                     

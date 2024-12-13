@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, QSize, QPoint, QUrl
 from PySide6.QtGui import QAction, QCursor
 from PySide6.QtMultimedia import QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtMultimedia import QAudioOutput
 from datetime import datetime
 import base64
 import os
@@ -141,6 +142,27 @@ class ChatPanel(QWidget):
         """)
         button_layout.addWidget(self.file_button)
         
+        # 添加发送音频按钮
+        self.audio_button = QPushButton("发送音频")
+        self.audio_button.setFixedSize(80, 32)
+        self.audio_button.setStyleSheet("""
+            QPushButton {
+                background-color: #9b59b6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #8e44ad;
+            }
+            QPushButton:pressed {
+                background-color: #6c3483;
+            }
+        """)
+        button_layout.addWidget(self.audio_button)
+        
         # 发送按钮
         self.send_button = QPushButton("发送")
         self.send_button.setFixedSize(80, 32)
@@ -232,7 +254,7 @@ class VideoPlayer(QWidget):
         
         # 控制面板布局
         controls_layout = QHBoxLayout(control_panel)
-        controls_layout.setContentsMargins(10, 0, 10, 0)  # 左右留出���些边距
+        controls_layout.setContentsMargins(10, 0, 10, 0)  # 左右留出些边距
         controls_layout.setSpacing(10)
         
         # 播放按钮
@@ -369,6 +391,13 @@ class MediaTextEdit(QTextEdit):
                     save_action.triggered.connect(lambda: self.save_media(media_name))
                     menu.addAction(play_action)
                     menu.addAction(save_action)
+                elif media_info['type'] == 'audio':
+                    play_action = QAction("播放音频", self)
+                    play_action.triggered.connect(lambda: self.play_audio(media_name))
+                    save_action = QAction("保存音频", self)
+                    save_action.triggered.connect(lambda: self.save_media(media_name))
+                    menu.addAction(play_action)
+                    menu.addAction(save_action)
                 elif media_info['type'] == 'file':
                     save_action = QAction("保存文件", self)
                     save_action.triggered.connect(lambda: self.save_media(media_name))
@@ -430,6 +459,213 @@ class MediaTextEdit(QTextEdit):
             except Exception as e:
                 QMessageBox.warning(self, "错误", f"保存{media_type}失败：{str(e)}")
 
+    def play_audio(self, media_name):
+        """播放音频"""
+        if media_name not in self.media_data:
+            return
+            
+        media_info = self.media_data[media_name]
+        if media_info['type'] != 'audio':
+            return
+            
+        # 创建音频播放器窗口
+        player = AudioPlayer(media_info['data'], media_info['ext'])
+        player.setWindowTitle("音频播放")
+        player.show()
+        self.video_players.append(player)  # 复用video_players列表存储音频播放器
+
+class AudioPlayer(QWidget):
+    """音频播放器组件"""
+    def __init__(self, audio_data, audio_ext):
+        super().__init__()
+        self.audio_data = audio_data
+        self.audio_ext = audio_ext
+        self.initUI()
+        
+    def initUI(self):
+        # 创建主布局
+        layout = QVBoxLayout()
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 创建音频播放器和音频输出
+        self.media_player = QMediaPlayer()
+        self.audio_output = QAudioOutput()  # 创建音频输出设备
+        self.media_player.setAudioOutput(self.audio_output)  # 设置音频输出
+        self.audio_output.setVolume(1.0)  # 设置音量为最大
+        
+        # 创建进度条
+        self.progress_slider = QSlider(Qt.Horizontal)
+        self.progress_slider.setRange(0, 0)
+        self.progress_slider.sliderMoved.connect(self.set_position)
+        self.progress_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #999999;
+                height: 8px;
+                background: #cccccc;
+                margin: 2px 0;
+            }
+            QSlider::handle:horizontal {
+                background: #3498db;
+                border: 1px solid #5c5c5c;
+                width: 14px;
+                margin: -4px 0;
+                border-radius: 7px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #2980b9;
+            }
+        """)
+        
+        # 创建音量滑块
+        self.volume_slider = QSlider(Qt.Horizontal)
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.setValue(100)  # 默认音量100%
+        self.volume_slider.setFixedWidth(80)
+        self.volume_slider.valueChanged.connect(self.set_volume)
+        self.volume_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #999999;
+                height: 4px;
+                background: #cccccc;
+                margin: 2px 0;
+            }
+            QSlider::handle:horizontal {
+                background: #3498db;
+                border: 1px solid #5c5c5c;
+                width: 10px;
+                margin: -3px 0;
+                border-radius: 5px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #2980b9;
+            }
+        """)
+        
+        # 创建时间标签
+        self.time_label = QLabel("00:00 / 00:00")
+        self.time_label.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                font-size: 12px;
+                padding: 0 5px;
+            }
+        """)
+        self.time_label.setFixedWidth(100)
+        
+        # 创建控制面板
+        control_panel = QWidget()
+        control_panel.setFixedHeight(40)
+        control_panel.setStyleSheet("""
+            QWidget {
+                background-color: #f5f6fa;
+                border-top: 1px solid #dcdde1;
+            }
+        """)
+        
+        # 控制面板布局
+        controls_layout = QHBoxLayout(control_panel)
+        controls_layout.setContentsMargins(10, 0, 10, 0)
+        controls_layout.setSpacing(10)
+        
+        # 播放按钮
+        self.play_button = QPushButton("播放")
+        self.play_button.clicked.connect(self.play_pause)
+        self.play_button.setFixedWidth(60)
+        self.play_button.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #2472a4;
+            }
+        """)
+        
+        # 将控件添加到控制布局
+        controls_layout.addWidget(self.play_button)
+        controls_layout.addWidget(self.progress_slider)
+        controls_layout.addWidget(self.time_label)
+        controls_layout.addWidget(self.volume_slider)
+        
+        # 将音频数据保存到临时文件
+        import tempfile
+        self.temp_file = tempfile.NamedTemporaryFile(suffix=self.audio_ext, delete=False)
+        self.temp_file.write(base64.b64decode(self.audio_data))
+        self.temp_file.close()
+        
+        # 设置音频源
+        self.media_player.setSource(QUrl.fromLocalFile(self.temp_file.name))
+        
+        # 连接信号
+        self.media_player.durationChanged.connect(self.duration_changed)
+        self.media_player.positionChanged.connect(self.position_changed)
+        
+        # 添加所有控件到主布局
+        layout.addWidget(control_panel)
+        self.setLayout(layout)
+        
+        # 设置窗口标题和初始大小
+        self.setWindowTitle("音频播放")
+        self.setFixedSize(500, 50)  # 增加宽度以容纳音量控制
+        
+    def play_pause(self):
+        if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.media_player.pause()
+            self.play_button.setText("播放")
+        else:
+            self.media_player.play()
+            self.play_button.setText("暂停")
+            
+    def duration_changed(self, duration):
+        """音频总时长改变时更新进度条范围"""
+        self.progress_slider.setRange(0, duration)
+        self.update_time_label()
+        
+    def position_changed(self, position):
+        """播放位置改变时更新进度条位置"""
+        if not self.progress_slider.isSliderDown():
+            self.progress_slider.setValue(position)
+        self.update_time_label()
+        
+    def set_position(self, position):
+        """拖动进度条时设置播放位置"""
+        self.media_player.setPosition(position)
+        
+    def update_time_label(self):
+        """更新时间标签"""
+        duration = self.media_player.duration()
+        position = self.media_player.position()
+        
+        def format_time(ms):
+            s = ms // 1000
+            m = s // 60
+            s = s % 60
+            return f"{m:02d}:{s:02d}"
+        
+        self.time_label.setText(f"{format_time(position)} / {format_time(duration)}")
+            
+    def closeEvent(self, event):
+        """窗口关闭时的处理"""
+        self.media_player.stop()
+        try:
+            os.unlink(self.temp_file.name)
+        except:
+            pass
+        super().closeEvent(event)
+
+    def set_volume(self, value):
+        """设置音量"""
+        volume = value / 100.0  # 将百分比转换为0-1的值
+        self.audio_output.setVolume(volume)
+
 class ChatWindow(QWidget):
     def __init__(self, client=None):
         super().__init__()
@@ -446,6 +682,7 @@ class ChatWindow(QWidget):
         self.group_chat.image_button.clicked.connect(self.send_image)
         self.group_chat.video_button.clicked.connect(self.send_video)  # 连接视频发送按钮
         self.group_chat.file_button.clicked.connect(self.send_file)  # 连接文件发送按钮
+        self.group_chat.audio_button.clicked.connect(self.send_audio)  # 连接音频发送按钮
         self.chat_stack.addWidget(self.group_chat)
         self.chat_panels["group"] = self.group_chat
         self.current_chat = "group"
@@ -462,6 +699,7 @@ class ChatWindow(QWidget):
             self.client.new_image_message.connect(self.handle_image_message)
             self.client.new_video_message.connect(self.handle_video_message)  # 添加视频消息处理
             self.client.new_file_message.connect(self.handle_file_message)  # 添加文件消息处理
+            self.client.new_audio_message.connect(self.handle_audio_message)  # 添加音频消息处理
         
         # 连接用户列表点击事件
         self.user_list.itemClicked.connect(self.on_user_clicked)
@@ -605,7 +843,7 @@ class ChatWindow(QWidget):
         self.setLayout(main_layout)
         
     def on_user_clicked(self, item):
-        """处理用户列表点击事件"""
+        """处理用���列表点击事件"""
         # 检查是否是广场
         if item.data(Qt.UserRole) == "group":
             self.chat_stack.setCurrentWidget(self.chat_panels["group"])
@@ -623,6 +861,7 @@ class ChatWindow(QWidget):
             private_chat.image_button.clicked.connect(self.send_image)
             private_chat.video_button.clicked.connect(self.send_video)  # 连接视频发送按钮
             private_chat.file_button.clicked.connect(self.send_file)  # 连接文件发送按钮
+            private_chat.audio_button.clicked.connect(self.send_audio)  # 连接音频发送按钮
             self.chat_stack.addWidget(private_chat)
             self.chat_panels[address] = private_chat
             
@@ -931,7 +1170,7 @@ class ChatWindow(QWidget):
                     }
                     
             except Exception as e:
-                QMessageBox.warning(self, "发送失败", f"图片发送失败：{str(e)}")
+                QMessageBox.warning(self, "发送失败", f"图片发送失败��{str(e)}")
 
     def handle_image_message(self, username, ip, port, image_data, image_ext, timestamp, is_private=False):
         """处理接收到的图片消息"""
@@ -1043,7 +1282,7 @@ class ChatWindow(QWidget):
                     current_panel.chat_display.append(
                         f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/> [视频文件]</p>"
                     )
-                    # 保存视频数据
+                    # ��存视频数据
                     current_panel.chat_display.media_data[media_name] = {
                         'type': 'video',
                         'data': video_base64,
@@ -1105,7 +1344,7 @@ class ChatWindow(QWidget):
         
         if file_path:
             try:
-                # 读取文��数据
+                # 读取文件数据
                 with open(file_path, 'rb') as f:
                     file_data = f.read()
                 
@@ -1209,5 +1448,128 @@ class ChatWindow(QWidget):
                 'type': 'file',
                 'data': file_data,
                 'ext': file_ext
+            }
+                    
+    def send_audio(self):
+        """处理发送音频"""
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(
+            self, "选择音频", "", 
+            "音频文件 (*.mp3 *.wav *.ogg *.m4a);;所有文件 (*.*)"
+        )
+        
+        if file_path:
+            try:
+                # 检查文件大小
+                file_size = os.path.getsize(file_path)
+                if file_size > 50 * 1024 * 1024:  # 50MB限制
+                    QMessageBox.warning(self, "文件过大", "音频文件不能超过50MB")
+                    return
+                
+                # 读取音频文件
+                with open(file_path, 'rb') as f:
+                    audio_data = f.read()
+                
+                # 将音频数据转换为Base64编码
+                audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+                
+                # 获取文件扩展名
+                _, ext = os.path.splitext(file_path)
+                
+                time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                media_name = f"audio_{time.replace(':', '-')}"
+                
+                if self.current_chat == "group":  # 广场消息
+                    self.client.send_message({
+                        "type": "square_audio",
+                        "audio_data": audio_base64,
+                        "audio_ext": ext,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示音频占位图
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/> [音频文件]</p>"
+                    )
+                    # 保存音频数据
+                    current_panel.chat_display.media_data[media_name] = {
+                        'type': 'audio',
+                        'data': audio_base64,
+                        'ext': ext
+                    }
+                    
+                else:  # 私聊消息
+                    target_ip, target_port = self.current_chat.split(":")
+                    self.client.send_message({
+                        "type": "private_audio",
+                        "target_ip": target_ip,
+                        "target_port": target_port,
+                        "audio_data": audio_base64,
+                        "audio_ext": ext,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示音频占位图
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/> [音频文件]</p>"
+                    )
+                    # 保存音频数据
+                    current_panel.chat_display.media_data[media_name] = {
+                        'type': 'audio',
+                        'data': audio_base64,
+                        'ext': ext
+                    }
+                    
+            except Exception as e:
+                QMessageBox.warning(self, "发送失败", f"音频发送失败：{str(e)}")
+
+    def handle_audio_message(self, username, ip, port, audio_data, audio_ext, timestamp, is_private=False):
+        """处理接收到的音频消息"""
+        media_name = f"audio_{timestamp.replace(':', '-')}"
+        
+        if is_private:
+            address = f"{ip}:{port}"
+            if address not in self.chat_panels:
+                private_chat = ChatPanel(f"与 {username} ({address}) 私聊")
+                private_chat.send_button.clicked.connect(self.send_message)
+                private_chat.image_button.clicked.connect(self.send_image)
+                private_chat.video_button.clicked.connect(self.send_video)
+                private_chat.audio_button.clicked.connect(self.send_audio)
+                private_chat.file_button.clicked.connect(self.send_file)
+                self.chat_stack.addWidget(private_chat)
+                self.chat_panels[address] = private_chat
+            
+            header = f"[{timestamp}] {username}"
+            self.chat_panels[address].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels[address].chat_display.append(
+                f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/> [音频文件]</p>"
+            )
+            # 保存音频数据
+            self.chat_panels[address].chat_display.media_data[media_name] = {
+                'type': 'audio',
+                'data': audio_data,
+                'ext': audio_ext
+            }
+        else:
+            header = f"[{timestamp}] {username} ({ip})"
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/> [音频文件]</p>"
+            )
+            # 保存音频数据
+            self.chat_panels["group"].chat_display.media_data[media_name] = {
+                'type': 'audio',
+                'data': audio_data,
+                'ext': audio_ext
             }
                     

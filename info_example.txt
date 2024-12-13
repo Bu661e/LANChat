@@ -180,3 +180,41 @@
         "file_ext": ".txt",  # 文件扩展名
         "timestamp": "2024-12-12 12:12:12"
     }
+11. 在广场上发送音频
+    11.1 one_user --> server
+    {
+        "type": "square_audio",
+        "audio_data": "base64编码的音频数据",
+        "audio_ext": ".mp3",  # 音频扩展名(.mp3, .wav, .ogg, .m4a等)
+        "timestamp": "2024-12-12 12:12:12"
+    }
+    11.2 server --> other users
+    {
+        "type": "square_audio",
+        "username": "name123",
+        "ip": "127.0.0.1",
+        "port": "8001",
+        "audio_data": "base64编码的音频数据",
+        "audio_ext": ".mp3",  # 音频扩展名(.mp3, .wav, .ogg, .m4a等)
+        "timestamp": "2024-12-12 12:12:12"
+    }
+12. 私聊发送音频
+    12.1 one_user --> server
+    {
+        "type": "private_audio",
+        "target_ip": "127.0.0.1",
+        "target_port": "8001",
+        "audio_data": "base64编码的音频数据",
+        "audio_ext": ".mp3",  # 音频扩展名(.mp3, .wav, .ogg, .m4a等)
+        "timestamp": "2024-12-12 12:12:12"
+    }
+    12.2 server --> target_user
+    {
+        "type": "private_audio",
+        "username": "name123",
+        "ip": "192.168.31.227",
+        "port": "8001",
+        "audio_data": "base64编码的音频数据",
+        "audio_ext": ".mp3",  # 音频扩展名(.mp3, .wav, .ogg, .m4a等)
+        "timestamp": "2024-12-12 12:12:12"
+    }

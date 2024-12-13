@@ -17,6 +17,7 @@ class Client(QObject):
     new_image_message = Signal(str, str, str, str, str, str, bool)  # 图片消息信号(username, ip, port, image_data, image_ext, timestamp, is_private)
     new_video_message = Signal(str, str, str, str, str, str, bool)  # 视频消息信号(username, ip, port, video_data, video_ext, timestamp, is_private)
     new_file_message = Signal(str, str, str, str, str, str, bool)  # 文件消息信号(username, ip, port, file_data, file_ext, timestamp, is_private)
+    new_audio_message = Signal(str, str, str, str, str, str, bool)  # 音频消息信号(username, ip, port, audio_data, audio_ext, timestamp, is_private)
     
     def __init__(self):
         super().__init__()
@@ -48,7 +49,7 @@ class Client(QObject):
                   f"本地地址：{self.local_ip}:{self.local_port}\n"
                   f"用户名: {self.username}")
             
-            # 发送用户登录信息到服务器
+            # 发送用���登录信息到服务器
             self.send_login()
             
             # 启动消息接收线程
@@ -114,7 +115,7 @@ class Client(QObject):
                     
                 message_length = int.from_bytes(length_bytes, 'big')
                 
-                # 分块接收���消息
+                # 分块接收消息
                 chunks = []
                 bytes_received = 0
                 while bytes_received < message_length:
@@ -172,6 +173,10 @@ class Client(QObject):
             self.handle_square_file(message)
         elif message_type == 'private_file':
             self.handle_private_file(message)
+        elif message_type == 'square_audio':
+            self.handle_square_audio(message)
+        elif message_type == 'private_audio':
+            self.handle_private_audio(message)
 
     def send_login(self):
         """发送登录信息到服务器"""
@@ -371,4 +376,35 @@ class Client(QObject):
         
         # 发送信号通知UI更新
         self.new_file_message.emit(username, ip, str(port), file_data, file_ext, timestamp, True)
+
+    def handle_square_audio(self, message):
+        """处理广场音频消息"""
+        username = message.get('username')
+        ip = message.get('ip')
+        port = message.get('port')
+        audio_data = message.get('audio_data')
+        audio_ext = message.get('audio_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[收到广场音频消息]")
+        print(f"发送者: {username} ({ip}:{port})")
+        print(f"时间: {timestamp}")
+        
+        # 发送信号通知UI更新
+        self.new_audio_message.emit(username, ip, port, audio_data, audio_ext, timestamp, False)
+    
+    def handle_private_audio(self, message):
+        """处理私聊音频消息"""
+        username = message.get('username')
+        ip = message.get('ip')
+        port = message.get('port')
+        audio_data = message.get('audio_data')
+        audio_ext = message.get('audio_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[收到私聊音频消息] {timestamp}")
+        print(f"发送者: {username} ({ip}:{port})")
+        
+        # 发送信号通知UI更新
+        self.new_audio_message.emit(username, ip, str(port), audio_data, audio_ext, timestamp, True)
 

@@ -1,9 +1,12 @@
 from PySide6.QtWidgets import (QWidget, QTextEdit, QLineEdit, QPushButton, 
                              QVBoxLayout, QHBoxLayout, QListWidget, QSplitter,
                              QLabel, QFrame, QStackedWidget, QListWidgetItem,
-                             QMessageBox)
-from PySide6.QtCore import Qt, QSize
+                             QMessageBox, QFileDialog, QMenu)
+from PySide6.QtCore import Qt, QSize, QPoint
+from PySide6.QtGui import QAction, QCursor
 from datetime import datetime
+import base64
+import os
 
 class ChatPanel(QWidget):
     """聊天面板组件，用于群聊或私聊"""
@@ -31,7 +34,7 @@ class ChatPanel(QWidget):
         layout.addWidget(self.title_label)
         
         # 美化聊天记录显示区域
-        self.chat_display = QTextEdit()
+        self.chat_display = ImageTextEdit()  # 使用自定义的ImageTextEdit
         self.chat_display.setReadOnly(True)
         self.chat_display.setStyleSheet("""
             QTextEdit {
@@ -68,9 +71,32 @@ class ChatPanel(QWidget):
         """)
         input_layout.addWidget(self.message_input)
         
-        # 发送按钮
+        # 按钮布局
         button_layout = QHBoxLayout()
         button_layout.addStretch()
+        
+        # 添加发送图片按���
+        self.image_button = QPushButton("发送图片")
+        self.image_button.setFixedSize(80, 32)
+        self.image_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;
+            }
+            QPushButton:pressed {
+                background-color: #219a52;
+            }
+        """)
+        button_layout.addWidget(self.image_button)
+        
+        # 发送按钮
         self.send_button = QPushButton("发送")
         self.send_button.setFixedSize(80, 32)
         self.send_button.setStyleSheet("""
@@ -90,13 +116,61 @@ class ChatPanel(QWidget):
             }
         """)
         button_layout.addWidget(self.send_button)
-        input_layout.addLayout(button_layout)
         
+        input_layout.addLayout(button_layout)
         input_widget.setLayout(input_layout)
         input_widget.setMaximumHeight(150)
         layout.addWidget(input_widget)
         
         self.setLayout(layout)
+
+class ImageTextEdit(QTextEdit):
+    def __init__(self):
+        super().__init__()
+        self.image_data = {}  # 存储图片数据的字典
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+
+    def show_context_menu(self, position):
+        cursor = self.cursorForPosition(position)
+        char_format = cursor.charFormat()
+        
+        # 检查光标位置是否在图片上
+        if char_format.isImageFormat():
+            image_name = char_format.toolTip()
+            if image_name in self.image_data:
+                menu = QMenu(self)
+                save_action = QAction("保存图片", self)
+                save_action.triggered.connect(lambda: self.save_image(image_name))
+                menu.addAction(save_action)
+                menu.exec_(QCursor.pos())
+
+    def save_image(self, image_name):
+        if image_name not in self.image_data:
+            return
+            
+        image_info = self.image_data[image_name]
+        image_data = image_info['data']
+        image_ext = image_info['ext']
+        
+        # 打开文件保存对话框
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getSaveFileName(
+            self,
+            "保存图片",
+            f"image{image_ext}",  # 默认文件名
+            f"图片文件 (*{image_ext});;所有文件 (*.*)"
+        )
+        
+        if file_path:
+            try:
+                # 解码Base64数据并保存为文件
+                image_bytes = base64.b64decode(image_data)
+                with open(file_path, 'wb') as f:
+                    f.write(image_bytes)
+                QMessageBox.information(self, "成功", "图片保存成功！")
+            except Exception as e:
+                QMessageBox.warning(self, "错误", f"保存图片失败：{str(e)}")
 
 class ChatWindow(QWidget):
     def __init__(self, client=None):
@@ -111,6 +185,7 @@ class ChatWindow(QWidget):
         # 创建群聊面板
         self.group_chat = ChatPanel("广场")
         self.group_chat.send_button.clicked.connect(self.send_message)
+        self.group_chat.image_button.clicked.connect(self.send_image)  # 连接图片发送按钮
         self.chat_stack.addWidget(self.group_chat)
         self.chat_panels["group"] = self.group_chat
         self.current_chat = "group"
@@ -124,6 +199,7 @@ class ChatWindow(QWidget):
             self.client.user_logout.connect(self.handle_user_logout)
             self.client.new_message.connect(self.handle_new_message)
             self.client.new_private_message.connect(self.handle_private_message)
+            self.client.new_image_message.connect(self.handle_image_message)  # 添加图片消息处理
         
         # 连接用户列表点击事件
         self.user_list.itemClicked.connect(self.on_user_clicked)
@@ -131,8 +207,8 @@ class ChatWindow(QWidget):
         self.logout_btn.clicked.connect(self.logout)
         
         # 自动选中广场选项
-        self.user_list.setCurrentRow(0)  # 选中第一项（广场）
-        
+        self.user_list.setCurrentRow(0)
+
     def initUI(self):
         self.setWindowTitle('局域网聊天室')
         self.resize(1000, 700)  # 调整窗口大小
@@ -282,6 +358,7 @@ class ChatWindow(QWidget):
         if address not in self.chat_panels:
             private_chat = ChatPanel(f"与 {username} ({address}) 私聊中")
             private_chat.send_button.clicked.connect(self.send_message)
+            private_chat.image_button.clicked.connect(self.send_image)  # 连接图片发送按钮
             self.chat_stack.addWidget(private_chat)
             self.chat_panels[address] = private_chat
             
@@ -305,7 +382,7 @@ class ChatWindow(QWidget):
             panel = self.chat_panels[address]
             self.chat_stack.removeWidget(panel)
             del self.chat_panels[address]
-            # 如果当前正在查看该用户的私聊，切换回群聊
+            # 如果前正在查看该用户的私聊，切换回群聊
             if self.current_chat == address:
                 self.chat_stack.setCurrentWidget(self.chat_panels["group"])
                 self.current_chat = "group"
@@ -366,7 +443,7 @@ class ChatWindow(QWidget):
         msg_box.setText("确定要退出登录吗？")
         msg_box.setIcon(QMessageBox.Question)
         
-        # 设置按钮
+        # ���置按钮
         yes_btn = msg_box.addButton("确定", QMessageBox.YesRole)
         no_btn = msg_box.addButton("取消", QMessageBox.NoRole)
         
@@ -407,7 +484,7 @@ class ChatWindow(QWidget):
             QPushButton[text="取消"]:pressed {
                 background-color: #707b7c;
             }
-            QLabel#qt_msgbox_label { /* 消息文本 */
+            QLabel#qt_msgbox_label { /* 消���文本 */
                 min-height: 40px;
                 min-width: 240px;
             }
@@ -518,4 +595,114 @@ class ChatWindow(QWidget):
         self.chat_panels[address].chat_display.append(
             f"<p style='margin-left:20px;color:#34495e;'>{content}</p>"
         )
+                    
+    def send_image(self):
+        """处理发送图片"""
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(
+            self, "选择图片", "", 
+            "图片文件 (*.png *.jpg *.jpeg *.gif *.bmp);;所有文件 (*.*)"
+        )
+        
+        if file_path:
+            try:
+                # 读取图片文件
+                with open(file_path, 'rb') as f:
+                    image_data = f.read()
+                
+                # 将图片数据转换为Base64编码
+                image_base64 = base64.b64encode(image_data).decode('utf-8')
+                
+                # 获取文件扩展名
+                _, ext = os.path.splitext(file_path)
+                
+                time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                image_name = f"img_{time.replace(':', '-')}"
+                
+                if self.current_chat == "group":  # 广场消息
+                    self.client.send_message({
+                        "type": "square_image",
+                        "image_data": image_base64,
+                        "image_ext": ext,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示图片
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src='data:image/{ext[1:]};base64,{image_base64}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
+                    )
+                    # 保存图片数据
+                    current_panel.chat_display.image_data[image_name] = {
+                        'data': image_base64,
+                        'ext': ext
+                    }
+                    
+                else:  # 私聊消息
+                    target_ip, target_port = self.current_chat.split(":")
+                    self.client.send_message({
+                        "type": "private_image",
+                        "target_ip": target_ip,
+                        "target_port": target_port,
+                        "image_data": image_base64,
+                        "image_ext": ext,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示图片
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src='data:image/{ext[1:]};base64,{image_base64}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
+                    )
+                    # 保存图片数据
+                    current_panel.chat_display.image_data[image_name] = {
+                        'data': image_base64,
+                        'ext': ext
+                    }
+                    
+            except Exception as e:
+                QMessageBox.warning(self, "发送失败", f"图片发送失败：{str(e)}")
+
+    def handle_image_message(self, username, ip, port, image_data, image_ext, timestamp, is_private=False):
+        """处理接收到的图片消息"""
+        image_name = f"img_{timestamp.replace(':', '-')}"
+        
+        if is_private:
+            address = f"{ip}:{port}"
+            if address not in self.chat_panels:
+                private_chat = ChatPanel(f"与 {username} ({address}) 私聊中")
+                private_chat.send_button.clicked.connect(self.send_message)
+                private_chat.image_button.clicked.connect(self.send_image)
+                self.chat_stack.addWidget(private_chat)
+                self.chat_panels[address] = private_chat
+            
+            header = f"[{timestamp}] {username}"
+            self.chat_panels[address].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels[address].chat_display.append(
+                f"<p style='margin-left:20px;'><img src='data:image/{image_ext[1:]};base64,{image_data}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
+            )
+            # 保存图片数据
+            self.chat_panels[address].chat_display.image_data[image_name] = {
+                'data': image_data,
+                'ext': image_ext
+            }
+        else:
+            header = f"[{timestamp}] {username} ({ip})"
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='margin-left:20px;'><img src='data:image/{image_ext[1:]};base64,{image_data}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
+            )
+            # 保存图片数据
+            self.chat_panels["group"].chat_display.image_data[image_name] = {
+                'data': image_data,
+                'ext': image_ext
+            }
                     

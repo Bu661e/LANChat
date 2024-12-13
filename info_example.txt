@@ -37,8 +37,7 @@
     {
         "type": "square_message",
         "content": "我在说话",
-        "timestamp": 2024-12-12 12:12:12
-
+        "timestamp": "2024-12-12 12:12:12"
     }
     3.2 server --> other users
     {
@@ -47,7 +46,7 @@
         "ip": "127.0.0.1",
         "port": "8001",
         "content": "我在说话",
-        "timestamp": 2024-12-12 12:12:12
+        "timestamp": "2024-12-12 12:12:12"
     }
 4. 私聊消息
     4.1 one_user --> server
@@ -56,14 +55,52 @@
         "target_ip": "127.0.0.1",
         "target_port": "8001",
         "content": "我在说话",
-        "timestamp": 2024-12-12 12:12:12
+        "timestamp": "2024-12-12 12:12:12"
     }
     4.2 server --> target_user
     {
         "type": "private_message",
         "username": "name123",
-        "ip: "192.168.31.227"
+        "ip": "192.168.31.227",
         "port": "8001",
         "content": "我在说话",
-        "timestamp": 2024-12-12 12:12:12
+        "timestamp": "2024-12-12 12:12:12"
+    }
+5. 在广场上发送图片
+    5.1 one_user --> server
+    {
+        "type": "square_image",
+        "image_data": "base64编码的图片数据",
+        "image_ext": ".png",  # 图片扩展名(.jpg, .png, .gif等)
+        "timestamp": "2024-12-12 12:12:12"
+    }
+    5.2 server --> other users
+    {
+        "type": "square_image",
+        "username": "name123",
+        "ip": "127.0.0.1",
+        "port": "8001",
+        "image_data": "base64编码的图片数据",
+        "image_ext": ".png",  # 图片扩展名(.jpg, .png, .gif等)
+        "timestamp": "2024-12-12 12:12:12"
+    }
+6. 私聊发送图片
+    6.1 one_user --> server
+    {
+        "type": "private_image",
+        "target_ip": "127.0.0.1",
+        "target_port": "8001",
+        "image_data": "base64编码的图片数据",
+        "image_ext": ".png",  # 图片扩展名(.jpg, .png, .gif等)
+        "timestamp": "2024-12-12 12:12:12"
+    }
+    6.2 server --> target_user
+    {
+        "type": "private_image",
+        "username": "name123",
+        "ip": "192.168.31.227",
+        "port": "8001",
+        "image_data": "base64编码的图片数据",
+        "image_ext": ".png",  # 图片扩展名(.jpg, .png, .gif等)
+        "timestamp": "2024-12-12 12:12:12"
     }

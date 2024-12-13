@@ -94,51 +94,80 @@ class ChatServer:
         if client_socket:
             try:
                 # 将消息转换为JSON字符串
-                message_json = json.dumps(message)
+                message_json = json.dumps(message, ensure_ascii=False)
                 # 发送消息长度
                 message_length = len(message_json.encode())
-                client_socket.send(message_length.to_bytes(4, 'big'))
+                client_socket.sendall(message_length.to_bytes(4, 'big'))
                 # 发送消息内容
-                client_socket.send(message_json.encode())
+                client_socket.sendall(message_json.encode())
                 
                 print(f"\n[发送消息]")
                 if client_socket in self.clients:
                     target = self.clients[client_socket]
                     print(f"目标用户: {target['username']} ({target['address'][0]}:{target['address'][1]})")
                 print(f"消息类型: {message.get('type')}")
-                print(f"消息内容: {message}")
+                if message.get('type') in ['square_image', 'private_image']:
+                    print("消息内容: [图片数据]")
+                else:
+                    print(f"消息内容: {message}")
                 
             except Exception as e:
                 print(f"[错误] 发送消息失败: {e}")
                 if client_socket in self.clients:
                     target = self.clients[client_socket]
                     print(f"目标用户: {target['username']} ({target['address'][0]}:{target['address'][1]})")
-                print(f"消息内容: {message}")
+                # 如果发送失败，关闭连接
+                self.handle_logout(client_socket)
 
     def receive_messages(self, client_socket, address):
         """接收并处理客户端消息"""
         try:
             print(f"\n[新连接] 地址: {address}")
             while self.running:
-                # 接收消息长度
-                length_bytes = client_socket.recv(4)
-                if not length_bytes:
-                    print(f"[连接断开] 客户端主动断开连接")
+                try:
+                    # 接收消息长度
+                    length_bytes = client_socket.recv(4)
+                    if not length_bytes:
+                        print(f"[连接断开] 客户端主动断开连接")
+                        break
+                        
+                    message_length = int.from_bytes(length_bytes, 'big')
+                    
+                    # 分块接收大消息
+                    chunks = []
+                    bytes_received = 0
+                    while bytes_received < message_length:
+                        chunk = client_socket.recv(min(8192, message_length - bytes_received))
+                        if not chunk:
+                            raise ConnectionError("接收消息时连接断开")
+                        chunks.append(chunk)
+                        bytes_received += len(chunk)
+                    
+                    # 组合所有分块
+                    message_json = b''.join(chunks).decode()
+                    
+                    try:
+                        message = json.loads(message_json)
+                        print(f"\n[收到消息] 类型: {message.get('type')}")
+                        if message.get('type') in ['square_image', 'private_image']:
+                            print("消息内容: [图片数据]")
+                        else:
+                            print(f"消息内容: {message}")
+                        
+                        # 处理消息
+                        self.process_message(client_socket, message)
+                    except json.JSONDecodeError as e:
+                        print(f"[错误] JSON解析失败: {e}")
+                        print(f"原始消息: {message_json[:200]}...")  # 只打印前200个字符
+                        continue
+                        
+                except ConnectionResetError:
+                    print(f"[错误] 客户端异常断开连接")
+                    break
+                except Exception as e:
+                    print(f"[错误] 接收消息时发生错误: {e}")
                     break
                     
-                message_length = int.from_bytes(length_bytes, 'big')
-                # 接收消息内容
-                message_json = client_socket.recv(message_length).decode()
-                message = json.loads(message_json)
-                
-                print(f"\n[收到消息] 类型: {message.get('type')}")
-                print(f"消息内容: {message}")
-                
-                # 处理消息
-                self.process_message(client_socket, message)
-                
-        except ConnectionResetError:
-            print(f"[错误] 客户端异常断开连接")
         except Exception as e:
             if client_socket in self.clients:
                 user_info = self.clients[client_socket]
@@ -155,8 +184,12 @@ class ChatServer:
             self.handle_login(client_socket, message)
         elif message_type == 'square_message':
             self.handle_square_message(client_socket, message)
-        elif message_type == 'private_message':  # 添加处理私聊消息
+        elif message_type == 'private_message':
             self.handle_private_message(client_socket, message)
+        elif message_type == 'square_image':
+            self.handle_square_image(client_socket, message)
+        elif message_type == 'private_image':
+            self.handle_private_image(client_socket, message)
         elif message_type == 'logout':
             self.handle_logout(client_socket)
 
@@ -357,3 +390,76 @@ class ChatServer:
             except Exception as e:
                 print(f"发送私聊消息失败: {e}")
                 self.remove_client(target_socket) 
+
+    def handle_square_image(self, client_socket, message):
+        """处理广场图片消息"""
+        if client_socket not in self.clients:
+            return
+        
+        sender = self.clients[client_socket]
+        username = sender['username']
+        ip, port = sender['address']
+        image_data = message.get('image_data')
+        image_ext = message.get('image_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[广场图片消息] {timestamp}")
+        print(f"发送者: {username} ({ip}:{port})")
+        
+        # 广播消息给所有用户
+        broadcast_message = {
+            'type': 'square_image',
+            'username': username,
+            'ip': ip,
+            'port': port,
+            'image_data': image_data,
+            'image_ext': image_ext,
+            'timestamp': timestamp
+        }
+        
+        # 广播给所有用户（除了发送者）
+        for c in list(self.clients.keys()):
+            if c != client_socket:
+                try:
+                    self.send_message(c, broadcast_message)
+                except Exception as e:
+                    print(f"向用户发送广场图片消息失败: {e}")
+                    
+    def handle_private_image(self, client_socket, message):
+        """处理私聊图片消息"""
+        if client_socket not in self.clients:
+            return
+            
+        sender = self.clients[client_socket]
+        username = sender['username']
+        ip, port = sender['address']
+        target_ip = message.get('target_ip')
+        target_port = message.get('target_port')
+        image_data = message.get('image_data')
+        image_ext = message.get('image_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[私聊图片消息] {timestamp}")
+        print(f"发送者: {username} ({ip}:{port})")
+        print(f"接收者: {target_ip}:{target_port}")
+        
+        # 查找目标客户端
+        target_client = None
+        for c, info in self.clients.items():
+            if info['address'] == (target_ip, int(target_port)):
+                target_client = c
+                break
+                
+        if target_client:
+            try:
+                self.send_message(target_client, {
+                    'type': 'private_image',
+                    'username': username,
+                    'ip': ip,
+                    'port': port,
+                    'image_data': image_data,
+                    'image_ext': image_ext,
+                    'timestamp': timestamp
+                })
+            except Exception as e:
+                print(f"发送私聊图片消息失败: {e}")

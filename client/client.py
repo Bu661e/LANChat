@@ -14,6 +14,7 @@ class Client(QObject):
     user_logout = Signal(str, str, int)  # 用户登出信号(username, ip, port)
     new_message = Signal(str, str, str, str, str)  # 群聊消息信号(username, ip, port, content, timestamp)
     new_private_message = Signal(str, str, str, str, str)  # 私聊消息信号(username, ip, port, content, timestamp)
+    new_image_message = Signal(str, str, str, str, str, str, bool)  # 图片消息信号(username, ip, port, image_data, image_ext, timestamp, is_private)
     
     def __init__(self):
         super().__init__()
@@ -43,7 +44,7 @@ class Client(QObject):
             print(f"客户端启动成功。\n"
                   f"服务器地址：{self.server_ip}:{self.server_port}\n"
                   f"本地地址：{self.local_ip}:{self.local_port}\n"
-                  f"用户名���{self.username}")
+                  f"用户名: {self.username}")
             
             # 发送用户登录信息到服务器
             self.send_login()
@@ -68,7 +69,8 @@ class Client(QObject):
         if hasattr(self, 'local_ip') and self.local_ip:
             print(f"本地地址: {self.local_ip}:{self.local_port}")
         
-        self.connection_failed.emit()
+        # 发送连接失败信号时附带错误信息
+        self.connection_failed.emit("连接已断开")
         if self.socket:
             try:
                 self.socket.close()
@@ -83,12 +85,20 @@ class Client(QObject):
             try:
                 message_json = json.dumps(message)
                 message_length = len(message_json.encode())
-                self.socket.send(message_length.to_bytes(4, 'big'))
-                self.socket.send(message_json.encode())
+                
+                # 分两步发送，确保数据完整性
+                length_bytes = message_length.to_bytes(4, 'big')
+                self.socket.sendall(length_bytes)
+                self.socket.sendall(message_json.encode())
+                
                 print(f"\n[发送消息] 类型: {message.get('type')}")
-                print(f"消息内容: {message}")
+                if message.get('type') in ['square_image', 'private_image']:
+                    print("消息内容: [图片数据]")
+                else:
+                    print(f"消息内容: {message}")
             except Exception as e:
                 print(f"[错误] 发送消息失败: {e}")
+                self.stop()
 
     def receive_messages(self):
         """接收服务器消息的循环"""
@@ -97,27 +107,44 @@ class Client(QObject):
                 # 接收消息长度
                 length_bytes = self.socket.recv(4)
                 if not length_bytes:
+                    print("[连接断开] 服务器关闭了连接")
                     break
+                    
                 message_length = int.from_bytes(length_bytes, 'big')
                 
-                # 接收消息内容
-                message_json = self.socket.recv(message_length).decode()
-                message = json.loads(message_json)
+                # 分块接收大消息
+                chunks = []
+                bytes_received = 0
+                while bytes_received < message_length:
+                    chunk = self.socket.recv(min(8192, message_length - bytes_received))
+                    if not chunk:
+                        raise ConnectionError("接收消息时连接断开")
+                    chunks.append(chunk)
+                    bytes_received += len(chunk)
                 
-                # 处理接收到的消息
-                self.process_message(message)
+                # 组合所有分块
+                message_json = b''.join(chunks).decode()
                 
+                try:
+                    message = json.loads(message_json)
+                    # 处理接收到的消息
+                    self.process_message(message)
+                except json.JSONDecodeError as e:
+                    print(f"[错误] JSON解析失败: {e}")
+                    continue
+                    
+            except ConnectionError as e:
+                print(f"[错误] 连接错误: {e}")
+                break
             except Exception as e:
-                print(f"接收消息失败: {e}")
+                print(f"[错误] 接收消息失败: {e}")
                 break
         
+        # 如果循环退出，说明连接已断开
         self.stop()
 
     def process_message(self, message):
-        """处理接收到的消息
-        Args:
-            message: 接收到的消息字典
-        """
+        """处理接收到的消息"""
         message_type = message.get('type')
         
         # 根据消息类型分发处理
@@ -131,6 +158,10 @@ class Client(QObject):
             self.handle_square_message(message)
         elif message_type == 'private_message':
             self.handle_private_message(message)
+        elif message_type == 'square_image':
+            self.handle_square_image(message)
+        elif message_type == 'private_image':
+            self.handle_private_image(message)
 
     def send_login(self):
         """发送登录信息到服务器"""
@@ -237,4 +268,35 @@ class Client(QObject):
         
         # 发送信号通知UI更新
         self.new_private_message.emit(username, ip, str(port), content, timestamp)
+
+    def handle_square_image(self, message):
+        """处理广场图片消息"""
+        username = message.get('username')
+        ip = message.get('ip')
+        port = message.get('port')
+        image_data = message.get('image_data')
+        image_ext = message.get('image_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[收到广���图片消息]")
+        print(f"发送者: {username} ({ip}:{port})")
+        print(f"时间: {timestamp}")
+        
+        # 发送信号通知UI更新
+        self.new_image_message.emit(username, ip, port, image_data, image_ext, timestamp, False)
+    
+    def handle_private_image(self, message):
+        """处理私聊图片消息"""
+        username = message.get('username')
+        ip = message.get('ip')
+        port = message.get('port')
+        image_data = message.get('image_data')
+        image_ext = message.get('image_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[收到私聊图片消息] {timestamp}")
+        print(f"发送者: {username} ({ip}:{port})")
+        
+        # 发送信号通知UI更新
+        self.new_image_message.emit(username, ip, str(port), image_data, image_ext, timestamp, True)
 

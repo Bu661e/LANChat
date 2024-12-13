@@ -15,6 +15,7 @@ class Client(QObject):
     new_message = Signal(str, str, str, str, str)  # 群聊消息信号(username, ip, port, content, timestamp)
     new_private_message = Signal(str, str, str, str, str)  # 私聊消息信号(username, ip, port, content, timestamp)
     new_image_message = Signal(str, str, str, str, str, str, bool)  # 图片消息信号(username, ip, port, image_data, image_ext, timestamp, is_private)
+    new_video_message = Signal(str, str, str, str, str, str, bool)  # 视频消息信号(username, ip, port, video_data, video_ext, timestamp, is_private)
     
     def __init__(self):
         super().__init__()
@@ -147,7 +148,7 @@ class Client(QObject):
         """处理接收到的消息"""
         message_type = message.get('type')
         
-        # 根据消息类型分发处理
+        # 根据消息类���分发处理
         if message_type == 'new_friend_login':
             self.handle_new_friend_login(message)
         elif message_type == 'old_friend_list':
@@ -162,6 +163,10 @@ class Client(QObject):
             self.handle_square_image(message)
         elif message_type == 'private_image':
             self.handle_private_image(message)
+        elif message_type == 'square_video':
+            self.handle_square_video(message)
+        elif message_type == 'private_video':
+            self.handle_private_video(message)
 
     def send_login(self):
         """发送登录信息到服务器"""
@@ -278,7 +283,7 @@ class Client(QObject):
         image_ext = message.get('image_ext')
         timestamp = message.get('timestamp')
         
-        print(f"\n[收到广���图片消息]")
+        print(f"\n[收到广场图片消息]")
         print(f"发送者: {username} ({ip}:{port})")
         print(f"时间: {timestamp}")
         
@@ -299,4 +304,35 @@ class Client(QObject):
         
         # 发送信号通知UI更新
         self.new_image_message.emit(username, ip, str(port), image_data, image_ext, timestamp, True)
+
+    def handle_square_video(self, message):
+        """处理广场视频消息"""
+        username = message.get('username')
+        ip = message.get('ip')
+        port = message.get('port')
+        video_data = message.get('video_data')
+        video_ext = message.get('video_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[收到广场视频消息]")
+        print(f"发送者: {username} ({ip}:{port})")
+        print(f"时间: {timestamp}")
+        
+        # 发送信号通知UI更新
+        self.new_video_message.emit(username, ip, port, video_data, video_ext, timestamp, False)
+    
+    def handle_private_video(self, message):
+        """处理私聊视频消息"""
+        username = message.get('username')
+        ip = message.get('ip')
+        port = message.get('port')
+        video_data = message.get('video_data')
+        video_ext = message.get('video_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[收到私聊视频消息] {timestamp}")
+        print(f"发送者: {username} ({ip}:{port})")
+        
+        # 发送信号通知UI更新
+        self.new_video_message.emit(username, ip, str(port), video_data, video_ext, timestamp, True)
 

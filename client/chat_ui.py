@@ -1,12 +1,15 @@
 from PySide6.QtWidgets import (QWidget, QTextEdit, QLineEdit, QPushButton, 
                              QVBoxLayout, QHBoxLayout, QListWidget, QSplitter,
                              QLabel, QFrame, QStackedWidget, QListWidgetItem,
-                             QMessageBox, QFileDialog, QMenu)
-from PySide6.QtCore import Qt, QSize, QPoint
+                             QMessageBox, QFileDialog, QMenu, QSlider)
+from PySide6.QtCore import Qt, QSize, QPoint, QUrl
 from PySide6.QtGui import QAction, QCursor
+from PySide6.QtMultimedia import QMediaPlayer
+from PySide6.QtMultimediaWidgets import QVideoWidget
 from datetime import datetime
 import base64
 import os
+import mimetypes
 
 class ChatPanel(QWidget):
     """聊天面板组件，用于群聊或私聊"""
@@ -34,7 +37,7 @@ class ChatPanel(QWidget):
         layout.addWidget(self.title_label)
         
         # 美化聊天记录显示区域
-        self.chat_display = ImageTextEdit()  # 使用自定义的ImageTextEdit
+        self.chat_display = MediaTextEdit()  # 使用支持视频的MediaTextEdit
         self.chat_display.setReadOnly(True)
         self.chat_display.setStyleSheet("""
             QTextEdit {
@@ -75,7 +78,28 @@ class ChatPanel(QWidget):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         
-        # 添加发送图片按���
+        # 添加发送视频按钮
+        self.video_button = QPushButton("发送视频")
+        self.video_button.setFixedSize(80, 32)
+        self.video_button.setStyleSheet("""
+            QPushButton {
+                background-color: #9b59b6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #8e44ad;
+            }
+            QPushButton:pressed {
+                background-color: #6c3483;
+            }
+        """)
+        button_layout.addWidget(self.video_button)
+        
+        # 添加发送图片按钮
         self.image_button = QPushButton("发送图片")
         self.image_button.setFixedSize(80, 32)
         self.image_button.setStyleSheet("""
@@ -124,53 +148,249 @@ class ChatPanel(QWidget):
         
         self.setLayout(layout)
 
-class ImageTextEdit(QTextEdit):
+class VideoPlayer(QWidget):
+    def __init__(self, video_data, video_ext):
+        super().__init__()
+        self.video_data = video_data
+        self.video_ext = video_ext
+        self.initUI()
+        
+    def initUI(self):
+        # 创建主布局
+        layout = QVBoxLayout()
+        layout.setSpacing(0)  # 减小控件间距
+        layout.setContentsMargins(0, 0, 0, 0)  # 移除边距
+        
+        # 创建视频播放器
+        self.media_player = QMediaPlayer()
+        self.video_widget = QVideoWidget()
+        
+        # 创建进度条
+        self.progress_slider = QSlider(Qt.Horizontal)
+        self.progress_slider.setRange(0, 0)
+        self.progress_slider.sliderMoved.connect(self.set_position)
+        self.progress_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #999999;
+                height: 8px;
+                background: #cccccc;
+                margin: 2px 0;
+            }
+            QSlider::handle:horizontal {
+                background: #3498db;
+                border: 1px solid #5c5c5c;
+                width: 14px;
+                margin: -4px 0;
+                border-radius: 7px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #2980b9;
+            }
+        """)
+        
+        # 创建时间标签
+        self.time_label = QLabel("00:00 / 00:00")
+        self.time_label.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                font-size: 12px;
+                padding: 0 5px;
+            }
+        """)
+        self.time_label.setFixedWidth(100)
+        
+        # 创建控制面板
+        control_panel = QWidget()
+        control_panel.setFixedHeight(40)  # 固定控制面板高度
+        control_panel.setStyleSheet("""
+            QWidget {
+                background-color: #f5f6fa;
+                border-top: 1px solid #dcdde1;
+            }
+        """)
+        
+        # 控制面板布局
+        controls_layout = QHBoxLayout(control_panel)
+        controls_layout.setContentsMargins(10, 0, 10, 0)  # 左右留出一些边距
+        controls_layout.setSpacing(10)
+        
+        # 播放按钮
+        self.play_button = QPushButton("播放")
+        self.play_button.clicked.connect(self.play_pause)
+        self.play_button.setFixedWidth(60)
+        self.play_button.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #2472a4;
+            }
+        """)
+        
+        # 将控件添加到控制布局
+        controls_layout.addWidget(self.play_button)
+        controls_layout.addWidget(self.progress_slider)
+        controls_layout.addWidget(self.time_label)
+        
+        # 将视频数据保存到临时文件
+        import tempfile
+        self.temp_file = tempfile.NamedTemporaryFile(suffix=self.video_ext, delete=False)
+        self.temp_file.write(base64.b64decode(self.video_data))
+        self.temp_file.close()
+        
+        # 设置视频源
+        self.media_player.setVideoOutput(self.video_widget)
+        self.media_player.setSource(QUrl.fromLocalFile(self.temp_file.name))
+        
+        # 连接信号
+        self.media_player.durationChanged.connect(self.duration_changed)
+        self.media_player.positionChanged.connect(self.position_changed)
+        
+        # 添加所有控件到主布局
+        layout.addWidget(self.video_widget, 1)  # 视频窗口设置为可伸缩
+        layout.addWidget(control_panel)  # 控制面板固定高度
+        self.setLayout(layout)
+        
+        # 设置窗口标题和初始大小
+        self.setWindowTitle("视频播放")
+        self.resize(800, 600)
+        
+    def play_pause(self):
+        if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.media_player.pause()
+            self.play_button.setText("播放")
+        else:
+            self.media_player.play()
+            self.play_button.setText("暂停")
+            
+    def duration_changed(self, duration):
+        """视频总时长改变时更新进度条范围"""
+        self.progress_slider.setRange(0, duration)
+        self.update_time_label()
+        
+    def position_changed(self, position):
+        """播放位置改变时更新进度条位置"""
+        if not self.progress_slider.isSliderDown():
+            self.progress_slider.setValue(position)
+        self.update_time_label()
+        
+    def set_position(self, position):
+        """拖动进度条时设置播放位置"""
+        self.media_player.setPosition(position)
+        
+    def update_time_label(self):
+        """更新时间标签"""
+        duration = self.media_player.duration()
+        position = self.media_player.position()
+        
+        def format_time(ms):
+            """将毫秒转换为 MM:SS 格式"""
+            s = ms // 1000
+            m = s // 60
+            s = s % 60
+            return f"{m:02d}:{s:02d}"
+        
+        self.time_label.setText(f"{format_time(position)} / {format_time(duration)}")
+            
+    def closeEvent(self, event):
+        """窗口关闭时的处理"""
+        # 清理临时文件
+        self.media_player.stop()
+        try:
+            os.unlink(self.temp_file.name)
+        except:
+            pass
+        super().closeEvent(event)
+
+    def resizeEvent(self, event):
+        """窗口大小改变时的处理"""
+        super().resizeEvent(event)
+        # 确保视频窗口始终保持16:9的宽高比
+        width = self.video_widget.width()
+        height = int(width * 9 / 16)
+        self.video_widget.setMinimumHeight(height)
+
+class MediaTextEdit(QTextEdit):
     def __init__(self):
         super().__init__()
-        self.image_data = {}  # 存储图片数据的字典
+        self.media_data = {}  # 存储媒体数据的字典
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.show_context_menu)
+        self.video_players = []  # 存储视频播放器窗口
 
     def show_context_menu(self, position):
         cursor = self.cursorForPosition(position)
         char_format = cursor.charFormat()
         
-        # 检查光标位置是否在图片上
+        # 检查光标位置是否在媒体内容上
         if char_format.isImageFormat():
-            image_name = char_format.toolTip()
-            if image_name in self.image_data:
+            media_name = char_format.toolTip()
+            if media_name in self.media_data:
                 menu = QMenu(self)
-                save_action = QAction("保存图片", self)
-                save_action.triggered.connect(lambda: self.save_image(image_name))
-                menu.addAction(save_action)
+                media_info = self.media_data[media_name]
+                
+                if media_info['type'] == 'image':
+                    save_action = QAction("保存图片", self)
+                    save_action.triggered.connect(lambda: self.save_media(media_name))
+                    menu.addAction(save_action)
+                elif media_info['type'] == 'video':
+                    play_action = QAction("播放视频", self)
+                    play_action.triggered.connect(lambda: self.play_video(media_name))
+                    save_action = QAction("保存视频", self)
+                    save_action.triggered.connect(lambda: self.save_media(media_name))
+                    menu.addAction(play_action)
+                    menu.addAction(save_action)
+                
                 menu.exec_(QCursor.pos())
 
-    def save_image(self, image_name):
-        if image_name not in self.image_data:
+    def play_video(self, media_name):
+        if media_name not in self.media_data:
             return
             
-        image_info = self.image_data[image_name]
-        image_data = image_info['data']
-        image_ext = image_info['ext']
+        media_info = self.media_data[media_name]
+        if media_info['type'] != 'video':
+            return
+            
+        # 创建视频播放器窗口
+        player = VideoPlayer(media_info['data'], media_info['ext'])
+        player.setWindowTitle("视频播放")
+        player.show()
+        self.video_players.append(player)
+
+    def save_media(self, media_name):
+        if media_name not in self.media_data:
+            return
+            
+        media_info = self.media_data[media_name]
+        media_data = media_info['data']
+        media_ext = media_info['ext']
         
         # 打开文件保存对话框
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getSaveFileName(
             self,
-            "保存图片",
-            f"image{image_ext}",  # 默认文件名
-            f"图片文件 (*{image_ext});;所有文件 (*.*)"
+            f"保存{media_info['type']}",
+            f"media{media_ext}",  # 默认文件名
+            f"{media_info['type']}文件 (*{media_ext});;所有文件 (*.*)"
         )
         
         if file_path:
             try:
                 # 解码Base64数据并保存为文件
-                image_bytes = base64.b64decode(image_data)
+                media_bytes = base64.b64decode(media_data)
                 with open(file_path, 'wb') as f:
-                    f.write(image_bytes)
-                QMessageBox.information(self, "成功", "图片保存成功！")
+                    f.write(media_bytes)
+                QMessageBox.information(self, "成功", f"{media_info['type']}保存成功！")
             except Exception as e:
-                QMessageBox.warning(self, "错误", f"保存图片失败：{str(e)}")
+                QMessageBox.warning(self, "错误", f"保存{media_info['type']}失败：{str(e)}")
 
 class ChatWindow(QWidget):
     def __init__(self, client=None):
@@ -185,7 +405,8 @@ class ChatWindow(QWidget):
         # 创建群聊面板
         self.group_chat = ChatPanel("广场")
         self.group_chat.send_button.clicked.connect(self.send_message)
-        self.group_chat.image_button.clicked.connect(self.send_image)  # 连接图片发送按钮
+        self.group_chat.image_button.clicked.connect(self.send_image)
+        self.group_chat.video_button.clicked.connect(self.send_video)  # 连接视频发送按钮
         self.chat_stack.addWidget(self.group_chat)
         self.chat_panels["group"] = self.group_chat
         self.current_chat = "group"
@@ -199,7 +420,8 @@ class ChatWindow(QWidget):
             self.client.user_logout.connect(self.handle_user_logout)
             self.client.new_message.connect(self.handle_new_message)
             self.client.new_private_message.connect(self.handle_private_message)
-            self.client.new_image_message.connect(self.handle_image_message)  # 添加图片消息处理
+            self.client.new_image_message.connect(self.handle_image_message)
+            self.client.new_video_message.connect(self.handle_video_message)  # 添加视频消息处理
         
         # 连接用户列表点击事件
         self.user_list.itemClicked.connect(self.on_user_clicked)
@@ -356,9 +578,10 @@ class ChatWindow(QWidget):
         
         # 如果是新的私聊，创建新的聊天面板
         if address not in self.chat_panels:
-            private_chat = ChatPanel(f"与 {username} ({address}) 私聊中")
+            private_chat = ChatPanel(f"与 {username} ({address}) 私聊")
             private_chat.send_button.clicked.connect(self.send_message)
-            private_chat.image_button.clicked.connect(self.send_image)  # 连接图片发送按钮
+            private_chat.image_button.clicked.connect(self.send_image)
+            private_chat.video_button.clicked.connect(self.send_video)  # 连接视频发送按钮
             self.chat_stack.addWidget(private_chat)
             self.chat_panels[address] = private_chat
             
@@ -443,7 +666,7 @@ class ChatWindow(QWidget):
         msg_box.setText("确定要退出登录吗？")
         msg_box.setIcon(QMessageBox.Question)
         
-        # ���置按钮
+        # 置按钮
         yes_btn = msg_box.addButton("确定", QMessageBox.YesRole)
         no_btn = msg_box.addButton("取消", QMessageBox.NoRole)
         
@@ -484,7 +707,7 @@ class ChatWindow(QWidget):
             QPushButton[text="取消"]:pressed {
                 background-color: #707b7c;
             }
-            QLabel#qt_msgbox_label { /* 消���文本 */
+            QLabel#qt_msgbox_label { /* 消文本 */
                 min-height: 40px;
                 min-width: 240px;
             }
@@ -552,7 +775,7 @@ class ChatWindow(QWidget):
             ip, port = address
             self.add_user(username, f"{ip}:{port}")
         
-        # 更新用户数量（加2是因为包含自己和广场选项）
+        # 更新用户数量（加2是因为包含自己��广场选项）
         self.user_list_label.setText(f"在线用户 ({len(users) + 1})")
                     
     def handle_user_logout(self, username, ip, port):
@@ -635,7 +858,8 @@ class ChatWindow(QWidget):
                         f"<p style='margin-left:20px;'><img src='data:image/{ext[1:]};base64,{image_base64}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
                     )
                     # 保存图片数据
-                    current_panel.chat_display.image_data[image_name] = {
+                    current_panel.chat_display.media_data[image_name] = {
+                        'type': 'image',
                         'data': image_base64,
                         'ext': ext
                     }
@@ -659,7 +883,8 @@ class ChatWindow(QWidget):
                         f"<p style='margin-left:20px;'><img src='data:image/{ext[1:]};base64,{image_base64}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
                     )
                     # 保存图片数据
-                    current_panel.chat_display.image_data[image_name] = {
+                    current_panel.chat_display.media_data[image_name] = {
+                        'type': 'image',
                         'data': image_base64,
                         'ext': ext
                     }
@@ -688,7 +913,8 @@ class ChatWindow(QWidget):
                 f"<p style='margin-left:20px;'><img src='data:image/{image_ext[1:]};base64,{image_data}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
             )
             # 保存图片数据
-            self.chat_panels[address].chat_display.image_data[image_name] = {
+            self.chat_panels[address].chat_display.media_data[image_name] = {
+                'type': 'image',
                 'data': image_data,
                 'ext': image_ext
             }
@@ -701,8 +927,130 @@ class ChatWindow(QWidget):
                 f"<p style='margin-left:20px;'><img src='data:image/{image_ext[1:]};base64,{image_data}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
             )
             # 保存图片数据
-            self.chat_panels["group"].chat_display.image_data[image_name] = {
+            self.chat_panels["group"].chat_display.media_data[image_name] = {
+                'type': 'image',
                 'data': image_data,
                 'ext': image_ext
+            }
+                    
+    def send_video(self):
+        """处理发送视频"""
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(
+            self, "选择视频", "", 
+            "视频文件 (*.mp4 *.avi *.mkv *.mov);;所有文件 (*.*)"
+        )
+        
+        if file_path:
+            try:
+                # 检查文件大小
+                file_size = os.path.getsize(file_path)
+                if file_size > 50 * 1024 * 1024:  # 50MB限制
+                    QMessageBox.warning(self, "文件过大", "视频文��不能超过50MB")
+                    return
+                
+                # 读取视频文件
+                with open(file_path, 'rb') as f:
+                    video_data = f.read()
+                
+                # 将视频数据转换为Base64编码
+                video_base64 = base64.b64encode(video_data).decode('utf-8')
+                
+                # 获取文件扩展名
+                _, ext = os.path.splitext(file_path)
+                
+                time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                media_name = f"video_{time.replace(':', '-')}"
+                
+                if self.current_chat == "group":  # 广场消息
+                    self.client.send_message({
+                        "type": "square_video",
+                        "video_data": video_base64,
+                        "video_ext": ext,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示视频占位图
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/> [视频文件]</p>"
+                    )
+                    # 保存视频数据
+                    current_panel.chat_display.media_data[media_name] = {
+                        'type': 'video',
+                        'data': video_base64,
+                        'ext': ext
+                    }
+                    
+                else:  # 私聊消息
+                    target_ip, target_port = self.current_chat.split(":")
+                    self.client.send_message({
+                        "type": "private_video",
+                        "target_ip": target_ip,
+                        "target_port": target_port,
+                        "video_data": video_base64,
+                        "video_ext": ext,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示视频占位图
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/> [视频文件]</p>"
+                    )
+                    # 保存视频数据
+                    current_panel.chat_display.media_data[media_name] = {
+                        'type': 'video',
+                        'data': video_base64,
+                        'ext': ext
+                    }
+                    
+            except Exception as e:
+                QMessageBox.warning(self, "发送失败", f"视频发送失败：{str(e)}")
+
+    def handle_video_message(self, username, ip, port, video_data, video_ext, timestamp, is_private=False):
+        """处理接收到的视频消息"""
+        media_name = f"video_{timestamp.replace(':', '-')}"
+        
+        if is_private:
+            address = f"{ip}:{port}"
+            if address not in self.chat_panels:
+                private_chat = ChatPanel(f"与 {username} ({address}) 私聊")
+                private_chat.send_button.clicked.connect(self.send_message)
+                private_chat.image_button.clicked.connect(self.send_image)
+                private_chat.video_button.clicked.connect(self.send_video)
+                self.chat_stack.addWidget(private_chat)
+                self.chat_panels[address] = private_chat
+            
+            header = f"[{timestamp}] {username}"
+            self.chat_panels[address].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels[address].chat_display.append(
+                f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/> [视频文件]</p>"
+            )
+            # 保存视频数据
+            self.chat_panels[address].chat_display.media_data[media_name] = {
+                'type': 'video',
+                'data': video_data,
+                'ext': video_ext
+            }
+        else:
+            header = f"[{timestamp}] {username} ({ip})"
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/> [视频文件]</p>"
+            )
+            # 保存视频数据
+            self.chat_panels["group"].chat_display.media_data[media_name] = {
+                'type': 'video',
+                'data': video_data,
+                'ext': video_ext
             }
                     

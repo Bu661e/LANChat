@@ -154,7 +154,7 @@ class ChatServer:
                         else:
                             print(f"消息内容: {message}")
                         
-                        # 处理消息
+                        # 处理��息
                         self.process_message(client_socket, message)
                     except json.JSONDecodeError as e:
                         print(f"[错误] JSON解析失败: {e}")
@@ -190,6 +190,10 @@ class ChatServer:
             self.handle_square_image(client_socket, message)
         elif message_type == 'private_image':
             self.handle_private_image(client_socket, message)
+        elif message_type == 'square_video':
+            self.handle_square_video(client_socket, message)
+        elif message_type == 'private_video':
+            self.handle_private_video(client_socket, message)
         elif message_type == 'logout':
             self.handle_logout(client_socket)
 
@@ -223,7 +227,7 @@ class ChatServer:
                     'address': info['address']
                 })
         
-        print(f"发送给新用户的用户列表: {users}")
+        print(f"发送给新用户的���户列表: {users}")
 
         try:
             self.send_message(client_socket, {
@@ -463,3 +467,76 @@ class ChatServer:
                 })
             except Exception as e:
                 print(f"发送私聊图片消息失败: {e}")
+
+    def handle_square_video(self, client_socket, message):
+        """处理广场视频消息"""
+        if client_socket not in self.clients:
+            return
+        
+        sender = self.clients[client_socket]
+        username = sender['username']
+        ip, port = sender['address']
+        video_data = message.get('video_data')
+        video_ext = message.get('video_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[广场视频消息] {timestamp}")
+        print(f"发送者: {username} ({ip}:{port})")
+        
+        # 广播消息给所有用户
+        broadcast_message = {
+            'type': 'square_video',
+            'username': username,
+            'ip': ip,
+            'port': port,
+            'video_data': video_data,
+            'video_ext': video_ext,
+            'timestamp': timestamp
+        }
+        
+        # 广播给所有用户（除了发送者）
+        for c in list(self.clients.keys()):
+            if c != client_socket:
+                try:
+                    self.send_message(c, broadcast_message)
+                except Exception as e:
+                    print(f"向用户发送广场视频消息失败: {e}")
+                    
+    def handle_private_video(self, client_socket, message):
+        """处理私聊视频消息"""
+        if client_socket not in self.clients:
+            return
+            
+        sender = self.clients[client_socket]
+        username = sender['username']
+        ip, port = sender['address']
+        target_ip = message.get('target_ip')
+        target_port = message.get('target_port')
+        video_data = message.get('video_data')
+        video_ext = message.get('video_ext')
+        timestamp = message.get('timestamp')
+        
+        print(f"\n[私聊视频消息] {timestamp}")
+        print(f"发送者: {username} ({ip}:{port})")
+        print(f"接收者: {target_ip}:{target_port}")
+        
+        # 查找目标客户端
+        target_client = None
+        for c, info in self.clients.items():
+            if info['address'] == (target_ip, int(target_port)):
+                target_client = c
+                break
+                
+        if target_client:
+            try:
+                self.send_message(target_client, {
+                    'type': 'private_video',
+                    'username': username,
+                    'ip': ip,
+                    'port': port,
+                    'video_data': video_data,
+                    'video_ext': video_ext,
+                    'timestamp': timestamp
+                })
+            except Exception as e:
+                print(f"发送私聊视频消息失败: {e}")

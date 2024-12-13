@@ -104,3 +104,41 @@
         "image_ext": ".png",  # 图片扩展名(.jpg, .png, .gif等)
         "timestamp": "2024-12-12 12:12:12"
     }
+7. 在广场上发送视频
+    7.1 one_user --> server
+    {
+        "type": "square_video",
+        "video_data": "base64编码的视频数据",
+        "video_ext": ".mp4",  # 视频扩展名(.mp4, .avi, .mkv, .mov等)
+        "timestamp": "2024-12-12 12:12:12"
+    }
+    7.2 server --> other users
+    {
+        "type": "square_video",
+        "username": "name123",
+        "ip": "127.0.0.1",
+        "port": "8001",
+        "video_data": "base64编码的视频数据",
+        "video_ext": ".mp4",  # 视频扩展名(.mp4, .avi, .mkv, .mov等)
+        "timestamp": "2024-12-12 12:12:12"
+    }
+8. 私聊发送视频
+    8.1 one_user --> server
+    {
+        "type": "private_video",
+        "target_ip": "127.0.0.1",
+        "target_port": "8001",
+        "video_data": "base64编码的视频数据",
+        "video_ext": ".mp4",  # 视频扩展名(.mp4, .avi, .mkv, .mov等)
+        "timestamp": "2024-12-12 12:12:12"
+    }
+    8.2 server --> target_user
+    {
+        "type": "private_video",
+        "username": "name123",
+        "ip": "192.168.31.227",
+        "port": "8001",
+        "video_data": "base64编码的视频数据",
+        "video_ext": ".mp4",  # 视频扩展名(.mp4, .avi, .mkv, .mov等)
+        "timestamp": "2024-12-12 12:12:12"
+    }

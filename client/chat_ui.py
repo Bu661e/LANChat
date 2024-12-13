@@ -11,6 +11,7 @@ from datetime import datetime
 import base64
 import os
 import mimetypes
+import tempfile
 
 class ChatPanel(QWidget):
     """聊天面板组件，用于群聊或私聊"""
@@ -25,7 +26,7 @@ class ChatPanel(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(10)  # 设置布局间距
         
-        # 美化标题标签
+        # 美���标题标签
         self.title_label = QLabel(title)
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet("""
@@ -187,6 +188,35 @@ class VideoPlayer(QWidget):
         super().__init__()
         self.video_data = video_data
         self.video_ext = video_ext
+        
+        # 创建媒体播放器和视频窗口
+        self.media_player = QMediaPlayer()
+        self.video_widget = QVideoWidget()
+        
+        # 创建音频输出设备
+        self.audio_output = QAudioOutput()
+        self.media_player.setAudioOutput(self.audio_output)
+        self.audio_output.setVolume(1.0)  # 设置默认音量为100%
+        
+        # 创建进度条
+        self.position_slider = QSlider(Qt.Horizontal)
+        self.position_slider.setRange(0, 0)
+        self.position_slider.sliderMoved.connect(self.set_position)
+        
+        # 创建音量滑块
+        self.volume_slider = QSlider(Qt.Horizontal)
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.setValue(100)  # 设置默认音量为100
+        self.volume_slider.valueChanged.connect(self.set_volume)
+        
+        # 创建播放按钮
+        self.play_button = QPushButton()
+        self.play_button.setIcon(QIcon(":/icons/play.png"))
+        self.play_button.clicked.connect(self.play_pause)
+        
+        # 创建时间标签
+        self.time_label = QLabel("00:00 / 00:00")
+        
         self.initUI()
         
     def initUI(self):
@@ -195,15 +225,27 @@ class VideoPlayer(QWidget):
         layout.setSpacing(0)  # 减小控件间距
         layout.setContentsMargins(0, 0, 0, 0)  # 移除边距
         
-        # 创建视频播放器
-        self.media_player = QMediaPlayer()
-        self.video_widget = QVideoWidget()
+        # 创建临时文件并写入视频数据
+        self.temp_file = tempfile.NamedTemporaryFile(suffix=self.video_ext, delete=False)
+        self.temp_file.write(base64.b64decode(self.video_data))
+        self.temp_file.close()
         
-        # 创建进度条
-        self.progress_slider = QSlider(Qt.Horizontal)
-        self.progress_slider.setRange(0, 0)
-        self.progress_slider.sliderMoved.connect(self.set_position)
-        self.progress_slider.setStyleSheet("""
+        # 设置视频源
+        self.media_player.setVideoOutput(self.video_widget)
+        self.media_player.setSource(QUrl.fromLocalFile(self.temp_file.name))
+        
+        # 连接信号
+        self.media_player.durationChanged.connect(self.duration_changed)
+        self.media_player.positionChanged.connect(self.position_changed)
+        
+        # 创建控制面板
+        control_panel = QWidget()
+        control_panel.setFixedHeight(50)  # 减小控制面板高度
+        control_panel.setStyleSheet("""
+            QWidget {
+                background-color: #f5f6fa;
+                border-top: 1px solid #dcdde1;
+            }
             QSlider::groove:horizontal {
                 border: 1px solid #999999;
                 height: 8px;
@@ -220,39 +262,6 @@ class VideoPlayer(QWidget):
             QSlider::handle:horizontal:hover {
                 background: #2980b9;
             }
-        """)
-        
-        # 创建时间标签
-        self.time_label = QLabel("00:00 / 00:00")
-        self.time_label.setStyleSheet("""
-            QLabel {
-                color: #2c3e50;
-                font-size: 12px;
-                padding: 0 5px;
-            }
-        """)
-        self.time_label.setFixedWidth(100)
-        
-        # 创建控制面板
-        control_panel = QWidget()
-        control_panel.setFixedHeight(40)  # 固定控制面板高度
-        control_panel.setStyleSheet("""
-            QWidget {
-                background-color: #f5f6fa;
-                border-top: 1px solid #dcdde1;
-            }
-        """)
-        
-        # 控制面板布局
-        controls_layout = QHBoxLayout(control_panel)
-        controls_layout.setContentsMargins(10, 0, 10, 0)  # 左右留出些边距
-        controls_layout.setSpacing(10)
-        
-        # 播放按钮
-        self.play_button = QPushButton("播放")
-        self.play_button.clicked.connect(self.play_pause)
-        self.play_button.setFixedWidth(60)
-        self.play_button.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -264,33 +273,38 @@ class VideoPlayer(QWidget):
             QPushButton:hover {
                 background-color: #2980b9;
             }
-            QPushButton:pressed {
-                background-color: #2472a4;
+            QLabel {
+                color: #2c3e50;
+                font-size: 12px;
             }
         """)
         
-        # 将控件添加到控制布局
+        # 控制面板布局
+        controls_layout = QHBoxLayout(control_panel)
+        controls_layout.setContentsMargins(10, 5, 10, 5)
+        
+        # 播放按钮
         controls_layout.addWidget(self.play_button)
-        controls_layout.addWidget(self.progress_slider)
+        
+        # 进度条
+        controls_layout.addWidget(self.position_slider)
+        
+        # 时间标签
+        self.time_label.setFixedWidth(100)  # 固定时间标签宽度
         controls_layout.addWidget(self.time_label)
         
-        # 将视频数据保存到临时文件
-        import tempfile
-        self.temp_file = tempfile.NamedTemporaryFile(suffix=self.video_ext, delete=False)
-        self.temp_file.write(base64.b64decode(self.video_data))
-        self.temp_file.close()
+        # 音量控制
+        volume_label = QLabel("音量")
+        volume_label.setFixedWidth(30)
+        controls_layout.addWidget(volume_label)
         
-        # 设置视频源
-        self.media_player.setVideoOutput(self.video_widget)
-        self.media_player.setSource(QUrl.fromLocalFile(self.temp_file.name))
-        
-        # 连接信号
-        self.media_player.durationChanged.connect(self.duration_changed)
-        self.media_player.positionChanged.connect(self.position_changed)
+        self.volume_slider.setFixedWidth(80)  # 设置音量滑块的固定宽度
+        controls_layout.addWidget(self.volume_slider)
         
         # 添加所有控件到主布局
         layout.addWidget(self.video_widget, 1)  # 视频窗口设置为可伸缩
         layout.addWidget(control_panel)  # 控制面板固定高度
+        
         self.setLayout(layout)
         
         # 设置窗口标题和初始大小
@@ -307,13 +321,13 @@ class VideoPlayer(QWidget):
             
     def duration_changed(self, duration):
         """视频总时长改变时更新进度条范围"""
-        self.progress_slider.setRange(0, duration)
+        self.position_slider.setRange(0, duration)
         self.update_time_label()
         
     def position_changed(self, position):
         """播放位置改变时更新进度条位置"""
-        if not self.progress_slider.isSliderDown():
-            self.progress_slider.setValue(position)
+        if not self.position_slider.isSliderDown():
+            self.position_slider.setValue(position)
         self.update_time_label()
         
     def set_position(self, position):
@@ -351,6 +365,11 @@ class VideoPlayer(QWidget):
         width = self.video_widget.width()
         height = int(width * 9 / 16)
         self.video_widget.setMinimumHeight(height)
+
+    def set_volume(self, value):
+        """设置音量"""
+        volume = value / 100.0  # 将百分比转换为0-1的值
+        self.audio_output.setVolume(volume)
 
 class MediaTextEdit(QTextEdit):
     def __init__(self):
@@ -419,7 +438,7 @@ class MediaTextEdit(QTextEdit):
         media_data = media_info['data']
         media_ext = media_info['ext']
         media_type = media_info['type']
-        file_name = media_info.get('file_name', '')  # 获���原始文件名
+        file_name = media_info.get('file_name', '')  # 获取原始文件名
         
         # 如果没有原始文件名，使用默认名称
         if not file_name:
@@ -597,7 +616,7 @@ class AudioPlayer(QWidget):
         controls_layout.addWidget(self.time_label)
         controls_layout.addWidget(self.volume_slider)
         
-        # 将音频数据保存到临时文件
+        # 将音频数据保存到���时文件
         import tempfile
         self.temp_file = tempfile.NamedTemporaryFile(suffix=self.audio_ext, delete=False)
         self.temp_file.write(base64.b64decode(self.audio_data))
@@ -873,7 +892,7 @@ class ChatWindow(QWidget):
         
     def add_user(self, username, ip):
         """添加在线用户到列表"""
-        # 在��隔线添加用户
+        # 在隔线添加用户
         self.user_list.addItem(f"{username} ({ip})")
         
     def remove_user(self, username, address):
@@ -1273,7 +1292,7 @@ class ChatWindow(QWidget):
                     current_panel.chat_display.append(
                         f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/><br/>[视频] {file_name}</p>"
                     )
-                    # 保存视频数据
+                    # 保存视频���据
                     current_panel.chat_display.media_data[media_name] = {
                         'type': 'video',
                         'data': video_base64,
@@ -1312,7 +1331,7 @@ class ChatWindow(QWidget):
                 QMessageBox.warning(self, "发送失败", f"视频发送失败：{str(e)}")
 
     def handle_video_message(self, username, ip, port, video_data, video_ext, timestamp, is_private=False, file_name=None):
-        """处理接收到的视��消息"""
+        """处理接收到的视频消息"""
         media_name = f"video_{timestamp.replace(':', '-')}"
         display_name = file_name if file_name else f"video{video_ext}"
         
@@ -1429,7 +1448,7 @@ class ChatWindow(QWidget):
                     current_panel.chat_display.append(
                         f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/><br/>[音频] {file_name}</p>"
                     )
-                    # 保��音频数据
+                    # 保存音频数据
                     current_panel.chat_display.media_data[media_name] = {
                         'type': 'audio',
                         'data': audio_base64,
@@ -1501,7 +1520,7 @@ class ChatWindow(QWidget):
                 with open(file_path, 'rb') as f:
                     file_data = f.read()
                 
-                # 将文件数据转换为Base64编码
+                # 将文件数据转换���Base64编码
                 file_base64 = base64.b64encode(file_data).decode('utf-8')
                 
                 # 获取文件名和扩展名

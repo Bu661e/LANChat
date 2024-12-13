@@ -14,10 +14,10 @@ class Client(QObject):
     user_logout = Signal(str, str, int)  # 用户登出信号(username, ip, port)
     new_message = Signal(str, str, str, str, str)  # 群聊消息信号(username, ip, port, content, timestamp)
     new_private_message = Signal(str, str, str, str, str)  # 私聊消息信号(username, ip, port, content, timestamp)
-    new_image_message = Signal(str, str, str, str, str, str, bool)  # 图片消息信号(username, ip, port, image_data, image_ext, timestamp, is_private)
-    new_video_message = Signal(str, str, str, str, str, str, bool)  # 视频消息信号(username, ip, port, video_data, video_ext, timestamp, is_private)
-    new_file_message = Signal(str, str, str, str, str, str, bool)  # 文件消息信号(username, ip, port, file_data, file_ext, timestamp, is_private)
-    new_audio_message = Signal(str, str, str, str, str, str, bool)  # 音频消息信号(username, ip, port, audio_data, audio_ext, timestamp, is_private)
+    new_image_message = Signal(str, str, str, str, str, str, bool, str)  # 图片消息信号(username, ip, port, image_data, image_ext, timestamp, is_private, file_name)
+    new_video_message = Signal(str, str, str, str, str, str, bool, str)  # 视频消息信号(username, ip, port, video_data, video_ext, timestamp, is_private, file_name)
+    new_file_message = Signal(str, str, str, str, str, str, bool, str)  # 文件消息信号(username, ip, port, file_data, file_ext, timestamp, is_private, file_name)
+    new_audio_message = Signal(str, str, str, str, str, str, bool, str)  # 音频消息信号(username, ip, port, audio_data, audio_ext, timestamp, is_private, file_name)
     
     def __init__(self):
         super().__init__()
@@ -49,7 +49,7 @@ class Client(QObject):
                   f"本地地址：{self.local_ip}:{self.local_port}\n"
                   f"用户名: {self.username}")
             
-            # 发送用���登录信息到服务器
+            # 发送用登录信息到服务器
             self.send_login()
             
             # 启动消息接收线程
@@ -285,20 +285,22 @@ class Client(QObject):
         self.new_private_message.emit(username, ip, str(port), content, timestamp)
 
     def handle_square_image(self, message):
-        """处理广场图片消息"""
+        """处理广场图片���息"""
         username = message.get('username')
         ip = message.get('ip')
         port = message.get('port')
         image_data = message.get('image_data')
         image_ext = message.get('image_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[收到广场图片消息]")
         print(f"发送者: {username} ({ip}:{port})")
         print(f"时间: {timestamp}")
+        print(f"文件名: {file_name}")
         
         # 发送信号通知UI更新
-        self.new_image_message.emit(username, ip, port, image_data, image_ext, timestamp, False)
+        self.new_image_message.emit(username, ip, port, image_data, image_ext, timestamp, False, file_name)
     
     def handle_private_image(self, message):
         """处理私聊图片消息"""
@@ -307,13 +309,15 @@ class Client(QObject):
         port = message.get('port')
         image_data = message.get('image_data')
         image_ext = message.get('image_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[收到私聊图片消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
+        print(f"文件名: {file_name}")
         
         # 发送信号通知UI更新
-        self.new_image_message.emit(username, ip, str(port), image_data, image_ext, timestamp, True)
+        self.new_image_message.emit(username, ip, str(port), image_data, image_ext, timestamp, True, file_name)
 
     def handle_square_video(self, message):
         """处理广场视频消息"""
@@ -322,14 +326,16 @@ class Client(QObject):
         port = message.get('port')
         video_data = message.get('video_data')
         video_ext = message.get('video_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[收到广场视频消息]")
         print(f"发送者: {username} ({ip}:{port})")
         print(f"时间: {timestamp}")
+        print(f"文件名: {file_name}")
         
         # 发送信号通知UI更新
-        self.new_video_message.emit(username, ip, port, video_data, video_ext, timestamp, False)
+        self.new_video_message.emit(username, ip, port, video_data, video_ext, timestamp, False, file_name)
     
     def handle_private_video(self, message):
         """处理私聊视频消息"""
@@ -338,13 +344,15 @@ class Client(QObject):
         port = message.get('port')
         video_data = message.get('video_data')
         video_ext = message.get('video_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[收到私聊视频消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
+        print(f"文件名: {file_name}")
         
         # 发送信号通知UI更新
-        self.new_video_message.emit(username, ip, str(port), video_data, video_ext, timestamp, True)
+        self.new_video_message.emit(username, ip, str(port), video_data, video_ext, timestamp, True, file_name)
 
     def handle_square_file(self, message):
         """处理广场文件消息"""
@@ -353,14 +361,16 @@ class Client(QObject):
         port = message.get('port')
         file_data = message.get('file_data')
         file_ext = message.get('file_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[收到广场文件消息]")
         print(f"发送者: {username} ({ip}:{port})")
         print(f"时间: {timestamp}")
+        print(f"文件名: {file_name}")
         
         # 发送信号通知UI更新
-        self.new_file_message.emit(username, ip, port, file_data, file_ext, timestamp, False)
+        self.new_file_message.emit(username, ip, port, file_data, file_ext, timestamp, False, file_name)
     
     def handle_private_file(self, message):
         """处理私聊文件消息"""
@@ -369,13 +379,15 @@ class Client(QObject):
         port = message.get('port')
         file_data = message.get('file_data')
         file_ext = message.get('file_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[收到私聊文件消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
+        print(f"文件名: {file_name}")
         
         # 发送信号通知UI更新
-        self.new_file_message.emit(username, ip, str(port), file_data, file_ext, timestamp, True)
+        self.new_file_message.emit(username, ip, str(port), file_data, file_ext, timestamp, True, file_name)
 
     def handle_square_audio(self, message):
         """处理广场音频消息"""
@@ -384,14 +396,16 @@ class Client(QObject):
         port = message.get('port')
         audio_data = message.get('audio_data')
         audio_ext = message.get('audio_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[收到广场音频消息]")
         print(f"发送者: {username} ({ip}:{port})")
         print(f"时间: {timestamp}")
+        print(f"文件名: {file_name}")
         
         # 发送信号通知UI更新
-        self.new_audio_message.emit(username, ip, port, audio_data, audio_ext, timestamp, False)
+        self.new_audio_message.emit(username, ip, port, audio_data, audio_ext, timestamp, False, file_name)
     
     def handle_private_audio(self, message):
         """处理私聊音频消息"""
@@ -400,11 +414,13 @@ class Client(QObject):
         port = message.get('port')
         audio_data = message.get('audio_data')
         audio_ext = message.get('audio_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[收到私聊音频消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
+        print(f"文件名: {file_name}")
         
         # 发送信号通知UI更新
-        self.new_audio_message.emit(username, ip, str(port), audio_data, audio_ext, timestamp, True)
+        self.new_audio_message.emit(username, ip, str(port), audio_data, audio_ext, timestamp, True, file_name)
 

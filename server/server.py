@@ -227,15 +227,14 @@ class ChatServer:
             print(f"- {info['username']} ({info['address'][0]}:{info['address'][1]})")
 
         # 向新用户发送当前用户列表
-        users = []  # 得到除了自己的所有用户
+        users = []  # 得到所有用户，包括自己
         for c, info in self.clients.items():
-            if c != client_socket:  # 排除自己
-                users.append({
-                    'username': info['username'],
-                    'address': info['address']
-                })
+            users.append({
+                'username': info['username'],
+                'address': info['address']
+            })
         
-        print(f"发送给新用户的���户列表: {users}")
+        print(f"发送给新用户的用户列表: {users}")
 
         try:
             self.send_message(client_socket, {
@@ -413,10 +412,12 @@ class ChatServer:
         ip, port = sender['address']
         image_data = message.get('image_data')
         image_ext = message.get('image_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[广场图片消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
+        print(f"文件名: {file_name}")
         
         # 广播消息给所有用户
         broadcast_message = {
@@ -426,6 +427,7 @@ class ChatServer:
             'port': port,
             'image_data': image_data,
             'image_ext': image_ext,
+            'file_name': file_name,  # 添加文件名
             'timestamp': timestamp
         }
         
@@ -449,11 +451,13 @@ class ChatServer:
         target_port = message.get('target_port')
         image_data = message.get('image_data')
         image_ext = message.get('image_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[私聊图片消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
         print(f"接收者: {target_ip}:{target_port}")
+        print(f"文件名: {file_name}")
         
         # 查找目标客户端
         target_client = None
@@ -471,6 +475,7 @@ class ChatServer:
                     'port': port,
                     'image_data': image_data,
                     'image_ext': image_ext,
+                    'file_name': file_name,  # 添加文件名
                     'timestamp': timestamp
                 })
             except Exception as e:
@@ -486,10 +491,12 @@ class ChatServer:
         ip, port = sender['address']
         video_data = message.get('video_data')
         video_ext = message.get('video_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[广场视频消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
+        print(f"文件名: {file_name}")
         
         # 广播消息给所有用户
         broadcast_message = {
@@ -499,6 +506,7 @@ class ChatServer:
             'port': port,
             'video_data': video_data,
             'video_ext': video_ext,
+            'file_name': file_name,  # 添加文件名
             'timestamp': timestamp
         }
         
@@ -522,11 +530,13 @@ class ChatServer:
         target_port = message.get('target_port')
         video_data = message.get('video_data')
         video_ext = message.get('video_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[私聊视频消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
         print(f"接收者: {target_ip}:{target_port}")
+        print(f"文件名: {file_name}")
         
         # 查找目标客户端
         target_client = None
@@ -544,10 +554,11 @@ class ChatServer:
                     'port': port,
                     'video_data': video_data,
                     'video_ext': video_ext,
+                    'file_name': file_name,  # 添加文件名
                     'timestamp': timestamp
                 })
             except Exception as e:
-                print(f"发送私聊视频消息失败: {e}")
+                print(f"��送私聊视频消息失败: {e}")
 
     def handle_square_file(self, client_socket, message):
         """处理广场文件消息"""
@@ -559,10 +570,12 @@ class ChatServer:
         ip, port = sender['address']
         file_data = message.get('file_data')
         file_ext = message.get('file_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[广场文件消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
+        print(f"文件名: {file_name}")
         
         # 广播消息给所有用户
         broadcast_message = {
@@ -572,6 +585,7 @@ class ChatServer:
             'port': port,
             'file_data': file_data,
             'file_ext': file_ext,
+            'file_name': file_name,  # 添加文件名
             'timestamp': timestamp
         }
         
@@ -595,11 +609,13 @@ class ChatServer:
         target_port = message.get('target_port')
         file_data = message.get('file_data')
         file_ext = message.get('file_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[私聊文件消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
         print(f"接收者: {target_ip}:{target_port}")
+        print(f"文件名: {file_name}")
         
         # 查找目标客户端
         target_client = None
@@ -617,6 +633,7 @@ class ChatServer:
                     'port': port,
                     'file_data': file_data,
                     'file_ext': file_ext,
+                    'file_name': file_name,  # 添加文件名
                     'timestamp': timestamp
                 })
             except Exception as e:
@@ -632,10 +649,12 @@ class ChatServer:
         ip, port = sender['address']
         audio_data = message.get('audio_data')
         audio_ext = message.get('audio_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[广场音频消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
+        print(f"文件名: {file_name}")
         
         # 广播消息给所有用户
         broadcast_message = {
@@ -645,6 +664,7 @@ class ChatServer:
             'port': port,
             'audio_data': audio_data,
             'audio_ext': audio_ext,
+            'file_name': file_name,  # 添加���件名
             'timestamp': timestamp
         }
         
@@ -668,11 +688,13 @@ class ChatServer:
         target_port = message.get('target_port')
         audio_data = message.get('audio_data')
         audio_ext = message.get('audio_ext')
+        file_name = message.get('file_name')  # 获取文件名
         timestamp = message.get('timestamp')
         
         print(f"\n[私聊音频消息] {timestamp}")
         print(f"发送者: {username} ({ip}:{port})")
         print(f"接收者: {target_ip}:{target_port}")
+        print(f"文件名: {file_name}")
         
         # 查找目标客户端
         target_client = None
@@ -690,6 +712,7 @@ class ChatServer:
                     'port': port,
                     'audio_data': audio_data,
                     'audio_ext': audio_ext,
+                    'file_name': file_name,  # 添加文件名
                     'timestamp': timestamp
                 })
             except Exception as e:

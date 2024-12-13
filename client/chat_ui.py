@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QWidget, QTextEdit, QLineEdit, QPushButton,
                              QLabel, QFrame, QStackedWidget, QListWidgetItem,
                              QMessageBox, QFileDialog, QMenu, QSlider)
 from PySide6.QtCore import Qt, QSize, QPoint, QUrl
-from PySide6.QtGui import QAction, QCursor
+from PySide6.QtGui import QAction, QCursor, QIcon
 from PySide6.QtMultimedia import QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtMultimedia import QAudioOutput
@@ -16,6 +16,9 @@ class ChatPanel(QWidget):
     """聊天面板组件，用于群聊或私聊"""
     def __init__(self, title="广场"):
         super().__init__()
+        # 获取当前文件所在目录的路径
+        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.icon_dir = os.path.join(self.current_dir, "icon")
         self.initUI(title)
         
     def initUI(self, title):
@@ -60,6 +63,76 @@ class ChatPanel(QWidget):
         input_layout = QVBoxLayout()
         input_layout.setSpacing(8)
         
+        # 创建图标工具栏
+        toolbar = QWidget()
+        toolbar_layout = QHBoxLayout()
+        toolbar_layout.setSpacing(15)  # 设置图标间距
+        toolbar_layout.setContentsMargins(10, 5, 10, 5)  # 设置边距
+        
+        # 创建图标按钮的样式表
+        icon_style = """
+            QPushButton {
+                border: none;
+                padding: 5px;
+                border-radius: 5px;
+                background-color: transparent;
+            }
+            QPushButton:hover {
+                background-color: #ecf0f1;
+            }
+            QPushButton:pressed {
+                background-color: #bdc3c7;
+            }
+        """
+        
+        # 创建图片按钮
+        self.image_button = QPushButton()
+        self.image_button.setIcon(QIcon(os.path.join(self.icon_dir, "image.svg")))
+        self.image_button.setIconSize(QSize(24, 24))
+        self.image_button.setToolTip("发送图片")
+        self.image_button.setStyleSheet(icon_style)
+        self.image_button.setCursor(Qt.PointingHandCursor)
+        toolbar_layout.addWidget(self.image_button)
+        
+        # 创建视频按钮
+        self.video_button = QPushButton()
+        self.video_button.setIcon(QIcon(os.path.join(self.icon_dir, "video.svg")))
+        self.video_button.setIconSize(QSize(24, 24))
+        self.video_button.setToolTip("发送视频")
+        self.video_button.setStyleSheet(icon_style)
+        self.video_button.setCursor(Qt.PointingHandCursor)
+        toolbar_layout.addWidget(self.video_button)
+        
+        # 创建音频按钮
+        self.audio_button = QPushButton()
+        self.audio_button.setIcon(QIcon(os.path.join(self.icon_dir, "audio.svg")))
+        self.audio_button.setIconSize(QSize(24, 24))
+        self.audio_button.setToolTip("发送音频")
+        self.audio_button.setStyleSheet(icon_style)
+        self.audio_button.setCursor(Qt.PointingHandCursor)
+        toolbar_layout.addWidget(self.audio_button)
+        
+        # 创建文件按钮
+        self.file_button = QPushButton()
+        self.file_button.setIcon(QIcon(os.path.join(self.icon_dir, "file.svg")))
+        self.file_button.setIconSize(QSize(24, 24))
+        self.file_button.setToolTip("发送文件")
+        self.file_button.setStyleSheet(icon_style)
+        self.file_button.setCursor(Qt.PointingHandCursor)
+        toolbar_layout.addWidget(self.file_button)
+        
+        # 添加弹簧，使图标靠左对齐
+        toolbar_layout.addStretch()
+        
+        toolbar.setLayout(toolbar_layout)
+        toolbar.setStyleSheet("""
+            QWidget {
+                background-color: white;
+
+            }
+        """)
+        input_layout.addWidget(toolbar)
+        
         # 消息输入框
         self.message_input = QTextEdit()
         self.message_input.setMaximumHeight(100)
@@ -68,6 +141,8 @@ class ChatPanel(QWidget):
             QTextEdit {
                 border: 1px solid #bdc3c7;
                 border-radius: 5px;
+                border-top-left-radius: 0px;
+                border-top-right-radius: 0px;
                 padding: 8px;
                 font-size: 14px;
                 background-color: white;
@@ -75,93 +150,9 @@ class ChatPanel(QWidget):
         """)
         input_layout.addWidget(self.message_input)
         
-        # 按钮布局
+        # 发送按钮布局
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-        
-        # 添加发送视频按钮
-        self.video_button = QPushButton("发送视频")
-        self.video_button.setFixedSize(80, 32)
-        self.video_button.setStyleSheet("""
-            QPushButton {
-                background-color: #9b59b6;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #8e44ad;
-            }
-            QPushButton:pressed {
-                background-color: #6c3483;
-            }
-        """)
-        button_layout.addWidget(self.video_button)
-        
-        # 添加发送图片按钮
-        self.image_button = QPushButton("发送图片")
-        self.image_button.setFixedSize(80, 32)
-        self.image_button.setStyleSheet("""
-            QPushButton {
-                background-color: #2ecc71;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #27ae60;
-            }
-            QPushButton:pressed {
-                background-color: #219a52;
-            }
-        """)
-        button_layout.addWidget(self.image_button)
-        
-        # 添加发送文件按钮
-        self.file_button = QPushButton("发送文件")
-        self.file_button.setFixedSize(80, 32)
-        self.file_button.setStyleSheet("""
-            QPushButton {
-                background-color: #e67e22;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #d35400;
-            }
-            QPushButton:pressed {
-                background-color: #c0392b;
-            }
-        """)
-        button_layout.addWidget(self.file_button)
-        
-        # 添加发送音频按钮
-        self.audio_button = QPushButton("发送音频")
-        self.audio_button.setFixedSize(80, 32)
-        self.audio_button.setStyleSheet("""
-            QPushButton {
-                background-color: #9b59b6;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #8e44ad;
-            }
-            QPushButton:pressed {
-                background-color: #6c3483;
-            }
-        """)
-        button_layout.addWidget(self.audio_button)
         
         # 发送按钮
         self.send_button = QPushButton("发送")
@@ -186,7 +177,7 @@ class ChatPanel(QWidget):
         
         input_layout.addLayout(button_layout)
         input_widget.setLayout(input_layout)
-        input_widget.setMaximumHeight(150)
+        input_widget.setMaximumHeight(200)  # 调整最大高度以适应新的布局
         layout.addWidget(input_widget)
         
         self.setLayout(layout)
@@ -373,7 +364,7 @@ class MediaTextEdit(QTextEdit):
         cursor = self.cursorForPosition(position)
         char_format = cursor.charFormat()
         
-        # 检查光标位置是否在媒体内容上
+        # 检查光标位置是否在媒体容上
         if char_format.isImageFormat():
             media_name = char_format.toolTip()
             if media_name in self.media_data:
@@ -428,24 +419,35 @@ class MediaTextEdit(QTextEdit):
         media_data = media_info['data']
         media_ext = media_info['ext']
         media_type = media_info['type']
+        file_name = media_info.get('file_name', '')  # 获���原始文件名
+        
+        # 如果没有原始文件名，使用默认名称
+        if not file_name:
+            if media_type == 'image':
+                file_name = f"image{media_ext}"
+            elif media_type == 'video':
+                file_name = f"video{media_ext}"
+            elif media_type == 'audio':
+                file_name = f"audio{media_ext}"
+            else:  # 文件类型
+                file_name = f"file{media_ext}"
         
         # 根据媒体类型设置不同的文件过滤器
         if media_type == 'image':
             file_filter = f"图片文件 (*{media_ext});;所有文件 (*.*)"
-            default_name = f"image{media_ext}"
         elif media_type == 'video':
             file_filter = f"视频文件 (*{media_ext});;所有文件 (*.*)"
-            default_name = f"video{media_ext}"
+        elif media_type == 'audio':
+            file_filter = f"音频文件 (*{media_ext});;所有文件 (*.*)"
         else:  # 文件类型
             file_filter = f"文件 (*{media_ext});;所有文件 (*.*)"
-            default_name = f"file{media_ext}"
         
         # 打开文件保存对话框
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getSaveFileName(
             self,
             f"保存{media_type}",
-            default_name,
+            file_name,  # 使用原始文件名作为默认名称
             file_filter
         )
         
@@ -834,7 +836,7 @@ class ChatWindow(QWidget):
             }
         """)
         
-        # 设置分割器的初始大小比例
+        # 设置分割的初始大小比例
         splitter.setSizes([250, 750])
         splitter.setCollapsible(0, False)
         splitter.setCollapsible(1, False)
@@ -843,7 +845,7 @@ class ChatWindow(QWidget):
         self.setLayout(main_layout)
         
     def on_user_clicked(self, item):
-        """处理用���列表点击事件"""
+        """处理用户列表点击事件"""
         # 检查是否是广场
         if item.data(Qt.UserRole) == "group":
             self.chat_stack.setCurrentWidget(self.chat_panels["group"])
@@ -871,7 +873,7 @@ class ChatWindow(QWidget):
         
     def add_user(self, username, ip):
         """添加在线用户到列表"""
-        # 在分隔线添加用户
+        # 在��隔线添加用户
         self.user_list.addItem(f"{username} ({ip})")
         
     def remove_user(self, username, address):
@@ -891,7 +893,7 @@ class ChatWindow(QWidget):
                 self.current_chat = "group"
 
     def add_message(self, username, message, to_address=None):
-        """添加消息到聊天记录
+        """加消息到聊天记录
         username: 发送消息的用户
         message: 消息内容
         to_address: 私聊目标用户地址，None表示群聊消息
@@ -1024,24 +1026,6 @@ class ChatWindow(QWidget):
             import sys
             sys.exit(0)
         
-    def handle_new_user_login(self, username, ip, port):
-        """处理新用户登录"""
-        self.add_user(username, f"{ip}:{port}")
-        
-        # 更新用户数量
-        current_count = self.user_list.count() - 1  # 减1是因为不计算分隔线
-        self.user_list_label.setText(f"在线用户 ({current_count})")
-        
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        header = f"[{timestamp}] 【系统消息】"
-        content = f"{username} ({ip}:{port}) 加入了聊天室"
-        self.chat_panels["group"].chat_display.append(
-            f"<p style='color:#7f8c8d;'>{header}</p>"
-        )
-        self.chat_panels["group"].chat_display.append(
-            f"<p style='margin-left:20px;color:#95a5a6;'>{content}</p>"
-        )
-        
     def handle_old_friend_list(self, users):
         """处理已有用户列表"""
         # 清空现有用户列表（保留广场和分隔线）
@@ -1052,11 +1036,33 @@ class ChatWindow(QWidget):
         for user in users:
             username = user.get('username')
             address = user.get('address')
-            ip, port = address
-            self.add_user(username, f"{ip}:{port}")
+            if isinstance(address, (list, tuple)) and len(address) >= 2:
+                ip, port = address
+                if ip != self.client.local_ip or str(port) != str(self.client.local_port):  # 不显示自己
+                    self.add_user(username, f"{ip}:{port}")
         
-        # 更新用户数量（加2是因为包含自己广场选项）
-        self.user_list_label.setText(f"在线用户 ({len(users) + 1})")
+        # 更新用户数量（加1是因为包含自己）
+        self.user_list_label.setText(f"在线用户 ({len(users)})")
+                    
+    def handle_new_user_login(self, username, ip, port):
+        """处理新用户登录"""
+        # 不添加自己
+        if ip != self.client.local_ip or str(port) != str(self.client.local_port):
+            self.add_user(username, f"{ip}:{port}")
+            
+            # 更新用户数量
+            current_count = self.user_list.count() - 1  # 减1是因为不计算分隔线
+            self.user_list_label.setText(f"在线用户 ({current_count})")
+            
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            header = f"[{timestamp}] 【系统消息】"
+            content = f"{username} ({ip}:{port}) 加入了聊天室"
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='color:#7f8c8d;'>{header}</p>"
+            )
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='margin-left:20px;color:#95a5a6;'>{content}</p>"
+            )
                     
     def handle_user_logout(self, username, ip, port):
         """处理用户登出"""
@@ -1116,7 +1122,8 @@ class ChatWindow(QWidget):
                 # 将图片数据转换为Base64编码
                 image_base64 = base64.b64encode(image_data).decode('utf-8')
                 
-                # 获取文件扩展名
+                # 获取文件名和扩展名
+                file_name = os.path.basename(file_path)
                 _, ext = os.path.splitext(file_path)
                 
                 time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1127,6 +1134,7 @@ class ChatWindow(QWidget):
                         "type": "square_image",
                         "image_data": image_base64,
                         "image_ext": ext,
+                        "file_name": file_name,
                         "timestamp": time
                     })
                     
@@ -1135,13 +1143,14 @@ class ChatWindow(QWidget):
                     current_panel = self.chat_panels[self.current_chat]
                     current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
                     current_panel.chat_display.append(
-                        f"<p style='margin-left:20px;'><img src='data:image/{ext[1:]};base64,{image_base64}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
+                        f"<p style='margin-left:20px;'><img src='data:image/{ext[1:]};base64,{image_base64}' width='400' style='max-width:90%;' title='{image_name}'/><br/>[图片] {file_name}</p>"
                     )
                     # 保存图片数据
                     current_panel.chat_display.media_data[image_name] = {
                         'type': 'image',
                         'data': image_base64,
-                        'ext': ext
+                        'ext': ext,
+                        'file_name': file_name
                     }
                     
                 else:  # 私聊消息
@@ -1152,6 +1161,7 @@ class ChatWindow(QWidget):
                         "target_port": target_port,
                         "image_data": image_base64,
                         "image_ext": ext,
+                        "file_name": file_name,
                         "timestamp": time
                     })
                     
@@ -1160,21 +1170,23 @@ class ChatWindow(QWidget):
                     current_panel = self.chat_panels[self.current_chat]
                     current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
                     current_panel.chat_display.append(
-                        f"<p style='margin-left:20px;'><img src='data:image/{ext[1:]};base64,{image_base64}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
+                        f"<p style='margin-left:20px;'><img src='data:image/{ext[1:]};base64,{image_base64}' width='400' style='max-width:90%;' title='{image_name}'/><br/>[图片] {file_name}</p>"
                     )
                     # 保存图片数据
                     current_panel.chat_display.media_data[image_name] = {
                         'type': 'image',
                         'data': image_base64,
-                        'ext': ext
+                        'ext': ext,
+                        'file_name': file_name
                     }
                     
             except Exception as e:
-                QMessageBox.warning(self, "发送失败", f"图片发送失败��{str(e)}")
+                QMessageBox.warning(self, "发送失败", f"图片发送失败：{str(e)}")
 
-    def handle_image_message(self, username, ip, port, image_data, image_ext, timestamp, is_private=False):
+    def handle_image_message(self, username, ip, port, image_data, image_ext, timestamp, is_private=False, file_name=None):
         """处理接收到的图片消息"""
         image_name = f"img_{timestamp.replace(':', '-')}"
+        display_name = file_name if file_name else f"image{image_ext}"
         
         if is_private:
             address = f"{ip}:{port}"
@@ -1190,13 +1202,14 @@ class ChatWindow(QWidget):
                 f"<p style='color:#2c3e50;'>{header}</p>"
             )
             self.chat_panels[address].chat_display.append(
-                f"<p style='margin-left:20px;'><img src='data:image/{image_ext[1:]};base64,{image_data}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
+                f"<p style='margin-left:20px;'><img src='data:image/{image_ext[1:]};base64,{image_data}' width='400' style='max-width:90%;' title='{image_name}'/><br/>[图片] {display_name}</p>"
             )
             # 保存图片数据
             self.chat_panels[address].chat_display.media_data[image_name] = {
                 'type': 'image',
                 'data': image_data,
-                'ext': image_ext
+                'ext': image_ext,
+                'file_name': display_name
             }
         else:
             header = f"[{timestamp}] {username} ({ip})"
@@ -1204,13 +1217,14 @@ class ChatWindow(QWidget):
                 f"<p style='color:#2c3e50;'>{header}</p>"
             )
             self.chat_panels["group"].chat_display.append(
-                f"<p style='margin-left:20px;'><img src='data:image/{image_ext[1:]};base64,{image_data}' width='400' style='max-width:90%;' title='{image_name}'/></p>"
+                f"<p style='margin-left:20px;'><img src='data:image/{image_ext[1:]};base64,{image_data}' width='400' style='max-width:90%;' title='{image_name}'/><br/>[图片] {display_name}</p>"
             )
             # 保存图片数据
             self.chat_panels["group"].chat_display.media_data[image_name] = {
                 'type': 'image',
                 'data': image_data,
-                'ext': image_ext
+                'ext': image_ext,
+                'file_name': display_name
             }
                     
     def send_video(self):
@@ -1236,7 +1250,8 @@ class ChatWindow(QWidget):
                 # 将视频数据转换为Base64编码
                 video_base64 = base64.b64encode(video_data).decode('utf-8')
                 
-                # 获取文件扩展名
+                # 获取文件名和扩展名
+                file_name = os.path.basename(file_path)
                 _, ext = os.path.splitext(file_path)
                 
                 time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1247,6 +1262,7 @@ class ChatWindow(QWidget):
                         "type": "square_video",
                         "video_data": video_base64,
                         "video_ext": ext,
+                        "file_name": file_name,
                         "timestamp": time
                     })
                     
@@ -1255,13 +1271,14 @@ class ChatWindow(QWidget):
                     current_panel = self.chat_panels[self.current_chat]
                     current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
                     current_panel.chat_display.append(
-                        f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/> [视频文件]</p>"
+                        f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/><br/>[视频] {file_name}</p>"
                     )
                     # 保存视频数据
                     current_panel.chat_display.media_data[media_name] = {
                         'type': 'video',
                         'data': video_base64,
-                        'ext': ext
+                        'ext': ext,
+                        'file_name': file_name
                     }
                     
                 else:  # 私聊消息
@@ -1272,6 +1289,7 @@ class ChatWindow(QWidget):
                         "target_port": target_port,
                         "video_data": video_base64,
                         "video_ext": ext,
+                        "file_name": file_name,
                         "timestamp": time
                     })
                     
@@ -1280,21 +1298,23 @@ class ChatWindow(QWidget):
                     current_panel = self.chat_panels[self.current_chat]
                     current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
                     current_panel.chat_display.append(
-                        f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/> [视频文件]</p>"
+                        f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/><br/>[视频] {file_name}</p>"
                     )
-                    # ��存视频数据
+                    # 保存视频数据
                     current_panel.chat_display.media_data[media_name] = {
                         'type': 'video',
                         'data': video_base64,
-                        'ext': ext
+                        'ext': ext,
+                        'file_name': file_name
                     }
                     
             except Exception as e:
                 QMessageBox.warning(self, "发送失败", f"视频发送失败：{str(e)}")
 
-    def handle_video_message(self, username, ip, port, video_data, video_ext, timestamp, is_private=False):
-        """处理接收到的视频消息"""
+    def handle_video_message(self, username, ip, port, video_data, video_ext, timestamp, is_private=False, file_name=None):
+        """处理接收到的视��消息"""
         media_name = f"video_{timestamp.replace(':', '-')}"
+        display_name = file_name if file_name else f"video{video_ext}"
         
         if is_private:
             address = f"{ip}:{port}"
@@ -1311,13 +1331,14 @@ class ChatWindow(QWidget):
                 f"<p style='color:#2c3e50;'>{header}</p>"
             )
             self.chat_panels[address].chat_display.append(
-                f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/> [视频文件]</p>"
+                f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/><br/>[视频] {display_name}</p>"
             )
             # 保存视频数据
             self.chat_panels[address].chat_display.media_data[media_name] = {
                 'type': 'video',
                 'data': video_data,
-                'ext': video_ext
+                'ext': video_ext,
+                'file_name': display_name
             }
         else:
             header = f"[{timestamp}] {username} ({ip})"
@@ -1325,129 +1346,14 @@ class ChatWindow(QWidget):
                 f"<p style='color:#2c3e50;'>{header}</p>"
             )
             self.chat_panels["group"].chat_display.append(
-                f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/> [视频文件]</p>"
+                f"<p style='margin-left:20px;'><img src=':/icons/video.png' width='100' title='{media_name}'/><br/>[视频] {display_name}</p>"
             )
             # 保存视频数据
             self.chat_panels["group"].chat_display.media_data[media_name] = {
                 'type': 'video',
                 'data': video_data,
-                'ext': video_ext
-            }
-                    
-    def send_file(self):
-        """处理发送文件"""
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(
-            self, "选择文件", "", 
-            "所有文件 (*.*)"
-        )
-        
-        if file_path:
-            try:
-                # 读取文件数据
-                with open(file_path, 'rb') as f:
-                    file_data = f.read()
-                
-                # 将文件数据转换为Base64编码
-                file_base64 = base64.b64encode(file_data).decode('utf-8')
-                
-                # 获取文件扩展名
-                _, ext = os.path.splitext(file_path)
-                
-                time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                media_name = f"file_{time.replace(':', '-')}"
-                
-                if self.current_chat == "group":  # 广场消息
-                    self.client.send_message({
-                        "type": "square_file",
-                        "file_data": file_base64,
-                        "file_ext": ext,
-                        "timestamp": time
-                    })
-                    
-                    # 在本地显示文件占位图
-                    header = f"[{time}] 【我】"
-                    current_panel = self.chat_panels[self.current_chat]
-                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
-                    current_panel.chat_display.append(
-                        f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/> [文件]</p>"
-                    )
-                    # 保存文件数据
-                    current_panel.chat_display.media_data[media_name] = {
-                        'type': 'file',
-                        'data': file_base64,
-                        'ext': ext
-                    }
-                    
-                else:  # 私聊消息
-                    target_ip, target_port = self.current_chat.split(":")
-                    self.client.send_message({
-                        "type": "private_file",
-                        "target_ip": target_ip,
-                        "target_port": target_port,
-                        "file_data": file_base64,
-                        "file_ext": ext,
-                        "timestamp": time
-                    })
-                    
-                    # 在本地显示文件占位图
-                    header = f"[{time}] 【我】"
-                    current_panel = self.chat_panels[self.current_chat]
-                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
-                    current_panel.chat_display.append(
-                        f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/> [文件]</p>"
-                    )
-                    # 保存文件数据
-                    current_panel.chat_display.media_data[media_name] = {
-                        'type': 'file',
-                        'data': file_base64,
-                        'ext': ext
-                    }
-                    
-            except Exception as e:
-                QMessageBox.warning(self, "发送失败", f"文件发送失败：{str(e)}")
-
-    def handle_file_message(self, username, ip, port, file_data, file_ext, timestamp, is_private=False):
-        """处理接收到的文件消息"""
-        media_name = f"file_{timestamp.replace(':', '-')}"
-        
-        if is_private:
-            address = f"{ip}:{port}"
-            if address not in self.chat_panels:
-                private_chat = ChatPanel(f"与 {username} ({address}) 私聊")
-                private_chat.send_button.clicked.connect(self.send_message)
-                private_chat.image_button.clicked.connect(self.send_image)
-                private_chat.video_button.clicked.connect(self.send_video)
-                private_chat.file_button.clicked.connect(self.send_file)
-                self.chat_stack.addWidget(private_chat)
-                self.chat_panels[address] = private_chat
-            
-            header = f"[{timestamp}] {username}"
-            self.chat_panels[address].chat_display.append(
-                f"<p style='color:#2c3e50;'>{header}</p>"
-            )
-            self.chat_panels[address].chat_display.append(
-                f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/> [文件]</p>"
-            )
-            # 保存文件数据
-            self.chat_panels[address].chat_display.media_data[media_name] = {
-                'type': 'file',
-                'data': file_data,
-                'ext': file_ext
-            }
-        else:
-            header = f"[{timestamp}] {username} ({ip})"
-            self.chat_panels["group"].chat_display.append(
-                f"<p style='color:#2c3e50;'>{header}</p>"
-            )
-            self.chat_panels["group"].chat_display.append(
-                f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/> [文件]</p>"
-            )
-            # 保存文件数据
-            self.chat_panels["group"].chat_display.media_data[media_name] = {
-                'type': 'file',
-                'data': file_data,
-                'ext': file_ext
+                'ext': video_ext,
+                'file_name': display_name
             }
                     
     def send_audio(self):
@@ -1473,7 +1379,8 @@ class ChatWindow(QWidget):
                 # 将音频数据转换为Base64编码
                 audio_base64 = base64.b64encode(audio_data).decode('utf-8')
                 
-                # 获取文件扩展名
+                # 获取文件名和扩展名
+                file_name = os.path.basename(file_path)
                 _, ext = os.path.splitext(file_path)
                 
                 time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1484,6 +1391,7 @@ class ChatWindow(QWidget):
                         "type": "square_audio",
                         "audio_data": audio_base64,
                         "audio_ext": ext,
+                        "file_name": file_name,
                         "timestamp": time
                     })
                     
@@ -1492,13 +1400,14 @@ class ChatWindow(QWidget):
                     current_panel = self.chat_panels[self.current_chat]
                     current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
                     current_panel.chat_display.append(
-                        f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/> [音频文件]</p>"
+                        f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/><br/>[音频] {file_name}</p>"
                     )
                     # 保存音频数据
                     current_panel.chat_display.media_data[media_name] = {
                         'type': 'audio',
                         'data': audio_base64,
-                        'ext': ext
+                        'ext': ext,
+                        'file_name': file_name
                     }
                     
                 else:  # 私聊消息
@@ -1509,6 +1418,7 @@ class ChatWindow(QWidget):
                         "target_port": target_port,
                         "audio_data": audio_base64,
                         "audio_ext": ext,
+                        "file_name": file_name,
                         "timestamp": time
                     })
                     
@@ -1517,21 +1427,23 @@ class ChatWindow(QWidget):
                     current_panel = self.chat_panels[self.current_chat]
                     current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
                     current_panel.chat_display.append(
-                        f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/> [音频文件]</p>"
+                        f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/><br/>[音频] {file_name}</p>"
                     )
-                    # 保存音频数据
+                    # 保��音频数据
                     current_panel.chat_display.media_data[media_name] = {
                         'type': 'audio',
                         'data': audio_base64,
-                        'ext': ext
+                        'ext': ext,
+                        'file_name': file_name
                     }
                     
             except Exception as e:
                 QMessageBox.warning(self, "发送失败", f"音频发送失败：{str(e)}")
 
-    def handle_audio_message(self, username, ip, port, audio_data, audio_ext, timestamp, is_private=False):
+    def handle_audio_message(self, username, ip, port, audio_data, audio_ext, timestamp, is_private=False, file_name=None):
         """处理接收到的音频消息"""
         media_name = f"audio_{timestamp.replace(':', '-')}"
+        display_name = file_name if file_name else f"audio{audio_ext}"
         
         if is_private:
             address = f"{ip}:{port}"
@@ -1550,13 +1462,14 @@ class ChatWindow(QWidget):
                 f"<p style='color:#2c3e50;'>{header}</p>"
             )
             self.chat_panels[address].chat_display.append(
-                f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/> [音频文件]</p>"
+                f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/><br/>[音频] {display_name}</p>"
             )
             # 保存音频数据
             self.chat_panels[address].chat_display.media_data[media_name] = {
                 'type': 'audio',
                 'data': audio_data,
-                'ext': audio_ext
+                'ext': audio_ext,
+                'file_name': display_name
             }
         else:
             header = f"[{timestamp}] {username} ({ip})"
@@ -1564,12 +1477,138 @@ class ChatWindow(QWidget):
                 f"<p style='color:#2c3e50;'>{header}</p>"
             )
             self.chat_panels["group"].chat_display.append(
-                f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/> [音频文件]</p>"
+                f"<p style='margin-left:20px;'><img src=':/icons/audio.png' width='100' title='{media_name}'/><br/>[音频] {display_name}</p>"
             )
             # 保存音频数据
             self.chat_panels["group"].chat_display.media_data[media_name] = {
                 'type': 'audio',
                 'data': audio_data,
-                'ext': audio_ext
+                'ext': audio_ext,
+                'file_name': display_name
+            }
+                    
+    def send_file(self):
+        """处理发送文件"""
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(
+            self, "选择文件", "", 
+            "所有文件 (*.*)"
+        )
+        
+        if file_path:
+            try:
+                # 读取文件数据
+                with open(file_path, 'rb') as f:
+                    file_data = f.read()
+                
+                # 将文件数据转换为Base64编码
+                file_base64 = base64.b64encode(file_data).decode('utf-8')
+                
+                # 获取文件名和扩展名
+                file_name = os.path.basename(file_path)
+                _, ext = os.path.splitext(file_path)
+                
+                time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                media_name = f"file_{time.replace(':', '-')}"
+                
+                if self.current_chat == "group":  # 广场消息
+                    self.client.send_message({
+                        "type": "square_file",
+                        "file_data": file_base64,
+                        "file_ext": ext,
+                        "file_name": file_name,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示文件占位图
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/><br/>[文件] {file_name}</p>"
+                    )
+                    # 保存文件数据
+                    current_panel.chat_display.media_data[media_name] = {
+                        'type': 'file',
+                        'data': file_base64,
+                        'ext': ext,
+                        'file_name': file_name
+                    }
+                    
+                else:  # 私聊消息
+                    target_ip, target_port = self.current_chat.split(":")
+                    self.client.send_message({
+                        "type": "private_file",
+                        "target_ip": target_ip,
+                        "target_port": target_port,
+                        "file_data": file_base64,
+                        "file_ext": ext,
+                        "file_name": file_name,
+                        "timestamp": time
+                    })
+                    
+                    # 在本地显示文件占位图
+                    header = f"[{time}] 【我】"
+                    current_panel = self.chat_panels[self.current_chat]
+                    current_panel.chat_display.append(f"<p style='color:#2c3e50;'>{header}</p>")
+                    current_panel.chat_display.append(
+                        f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/><br/>[文件] {file_name}</p>"
+                    )
+                    # 保存文件数据
+                    current_panel.chat_display.media_data[media_name] = {
+                        'type': 'file',
+                        'data': file_base64,
+                        'ext': ext,
+                        'file_name': file_name
+                    }
+                    
+            except Exception as e:
+                QMessageBox.warning(self, "发送失败", f"文件发送失败：{str(e)}")
+
+    def handle_file_message(self, username, ip, port, file_data, file_ext, timestamp, is_private=False, file_name=None):
+        """处理接收到的文件消息"""
+        media_name = f"file_{timestamp.replace(':', '-')}"
+        display_name = file_name if file_name else f"file{file_ext}"
+        
+        if is_private:
+            address = f"{ip}:{port}"
+            if address not in self.chat_panels:
+                private_chat = ChatPanel(f"与 {username} ({address}) 私聊")
+                private_chat.send_button.clicked.connect(self.send_message)
+                private_chat.image_button.clicked.connect(self.send_image)
+                private_chat.video_button.clicked.connect(self.send_video)
+                private_chat.audio_button.clicked.connect(self.send_audio)
+                private_chat.file_button.clicked.connect(self.send_file)
+                self.chat_stack.addWidget(private_chat)
+                self.chat_panels[address] = private_chat
+            
+            header = f"[{timestamp}] {username}"
+            self.chat_panels[address].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels[address].chat_display.append(
+                f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/><br/>[文件] {display_name}</p>"
+            )
+            # 保存文件数据
+            self.chat_panels[address].chat_display.media_data[media_name] = {
+                'type': 'file',
+                'data': file_data,
+                'ext': file_ext,
+                'file_name': display_name
+            }
+        else:
+            header = f"[{timestamp}] {username} ({ip})"
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='color:#2c3e50;'>{header}</p>"
+            )
+            self.chat_panels["group"].chat_display.append(
+                f"<p style='margin-left:20px;'><img src=':/icons/file.png' width='100' title='{media_name}'/><br/>[文件] {display_name}</p>"
+            )
+            # 保存文件数据
+            self.chat_panels["group"].chat_display.media_data[media_name] = {
+                'type': 'file',
+                'data': file_data,
+                'ext': file_ext,
+                'file_name': display_name
             }
                     

@@ -12,7 +12,7 @@ class ChatServer:
         self.clients = {}       # 存储客户端信息 {client_socket: {'username': str, 'address': tuple}}
         self.running = False    # 服务器运行状态
 
-    def start(self, host='192.168.31.227', port=8000):
+    def start(self, host='172.20.10.4', port=8000):
         """启动服务器并开始监听连接"""
         try:
             # 初始化服务器配置

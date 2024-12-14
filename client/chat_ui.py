@@ -1055,10 +1055,10 @@ class ChatWindow(QWidget):
         for user in users:
             username = user.get('username')
             address = user.get('address')
-            if isinstance(address, (list, tuple)) and len(address) >= 2:
-                ip, port = address
-                if ip != self.client.local_ip or str(port) != str(self.client.local_port):  # 不显示自己
-                    self.add_user(username, f"{ip}:{port}")
+            # if isinstance(address, (list, tuple)) and len(address) >= 2:
+            ip, port = address
+            if ip != self.client.local_ip or str(port) != str(self.client.local_port):  # 不显示自己
+                self.add_user(username, f"{ip}:{port}")
         
         # 更新用户数量（加1是因为包含自己）
         self.user_list_label.setText(f"在线用户 ({len(users)})")

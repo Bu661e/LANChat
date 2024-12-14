@@ -6,3 +6,15 @@
 - `config.json`中可以更改默认用户配置
 
 `info_example.txt`中是CS之间传递的消息格式
+
+#### 用法：
+
+```
+cd server
+python main.py
+```
+
+```
+cd client
+python main.py
+```
